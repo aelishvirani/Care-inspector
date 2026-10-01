@@ -1,0 +1,760 @@
+import asyncio
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from sqlalchemy import desc, select
+
+from .alerts import evaluate_measurement, set_alert
+from .database import Base, SessionLocal, engine
+from .models import Alert, Configuration, Device, Measurement
+
+
+OFFLINE_CHECK_INTERVAL = 5
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
+
+
+def make_aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value
+
+
+def get_configuration(db):
+    config = db.get(Configuration, 1)
+
+    if config is None:
+        config = Configuration(
+            id=1,
+            collector_interval_seconds=5,
+            offline_timeout_seconds=15,
+            temperature_high=27.5,
+            pressure_low=0.246,
+            pressure_high=0.260,
+            ink_low=70,
+            makeup_low=60,
+            printer_mode="simulator",
+            printer_host="127.0.0.1",
+            printer_port=1502,
+            device_id=1,
+        )
+
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+
+    return config
+
+
+async def offline_monitor():
+    while True:
+        await asyncio.sleep(
+            OFFLINE_CHECK_INTERVAL
+        )
+
+        now = utc_now()
+
+        with SessionLocal() as db:
+            config = get_configuration(db)
+
+            offline_after_seconds = (
+                config.offline_timeout_seconds
+            )
+
+            devices = db.scalars(
+                select(Device)
+            ).all()
+
+            changed = False
+
+            for device in devices:
+                if device.last_seen is None:
+                    continue
+
+                last_seen = make_aware(
+                    device.last_seen
+                )
+
+                seconds_since_seen = (
+                    now - last_seen
+                ).total_seconds()
+
+                is_offline = (
+                    seconds_since_seen
+                    > offline_after_seconds
+                )
+
+                if is_offline:
+                    if device.online:
+                        print(
+                            f"Device OFFLINE: "
+                            f"{device.device_id}"
+                        )
+
+                    device.online = False
+
+                    set_alert(
+                        db,
+                        device_id=device.device_id,
+                        alert_type="offline",
+                        severity="critical",
+                        message=(
+                            "No measurement received "
+                            f"for more than "
+                            f"{offline_after_seconds} "
+                            "seconds"
+                        ),
+                        active=True,
+                    )
+
+                    changed = True
+
+            if changed:
+                db.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(
+        bind=engine
+    )
+
+    with SessionLocal() as db:
+        get_configuration(db)
+
+    monitor_task = asyncio.create_task(
+        offline_monitor()
+    )
+
+    yield
+
+    monitor_task.cancel()
+
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(
+    title="Care-Inspector API",
+    version="0.3.0",
+    lifespan=lifespan,
+)
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "service": "care-inspector-backend",
+        "version": "0.3.0",
+    }
+
+
+@app.get("/api/devices")
+async def devices():
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Device)
+            .order_by(Device.device_id)
+        ).all()
+
+        return [
+            {
+                "device_id": d.device_id,
+                "source": d.source,
+                "online": d.online,
+                "status": d.status,
+                "last_seen": (
+                    d.last_seen.isoformat()
+                    if d.last_seen
+                    else None
+                ),
+                "print_count": d.print_count,
+                "temperature_c": (
+                    d.temperature_c
+                ),
+                "pressure_mpa": (
+                    d.pressure_mpa
+                ),
+                "ink_level_percent": (
+                    d.ink_level_percent
+                ),
+                "makeup_level_percent": (
+                    d.makeup_level_percent
+                ),
+            }
+            for d in rows
+        ]
+
+
+@app.get("/api/measurements")
+async def measurements(
+    limit: int = 500,
+    device_id: str | None = None,
+    from_time: datetime | None = None,
+    to_time: datetime | None = None,
+):
+    limit = max(
+        1,
+        min(limit, 5000),
+    )
+
+    with SessionLocal() as db:
+        query = select(Measurement)
+
+        if device_id:
+            query = query.where(
+                Measurement.device_id
+                == device_id
+            )
+
+        if from_time:
+            query = query.where(
+                Measurement.timestamp
+                >= from_time
+            )
+
+        if to_time:
+            query = query.where(
+                Measurement.timestamp
+                <= to_time
+            )
+
+        rows = db.scalars(
+            query
+            .order_by(
+                desc(
+                    Measurement.timestamp
+                )
+            )
+            .limit(limit)
+        ).all()
+
+        return [
+            {
+                "id": m.id,
+                "device_id": m.device_id,
+                "source": m.source,
+                "online": m.online,
+                "status": m.status,
+                "print_count": (
+                    m.print_count
+                ),
+                "temperature_c": (
+                    m.temperature_c
+                ),
+                "pressure_mpa": (
+                    m.pressure_mpa
+                ),
+                "ink_level_percent": (
+                    m.ink_level_percent
+                ),
+                "makeup_level_percent": (
+                    m.makeup_level_percent
+                ),
+                "timestamp": (
+                    m.timestamp.isoformat()
+                ),
+            }
+            for m in rows
+        ]
+
+
+# Kept because the Overview frontend
+# currently uses this endpoint.
+@app.get(
+    "/api/measurements/latest"
+)
+async def latest_measurements(
+    limit: int = 20,
+):
+    limit = max(
+        1,
+        min(limit, 500),
+    )
+
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Measurement)
+            .order_by(
+                desc(
+                    Measurement.timestamp
+                )
+            )
+            .limit(limit)
+        ).all()
+
+        return [
+            {
+                "id": m.id,
+                "device_id": m.device_id,
+                "source": m.source,
+                "online": m.online,
+                "status": m.status,
+                "print_count": (
+                    m.print_count
+                ),
+                "temperature_c": (
+                    m.temperature_c
+                ),
+                "pressure_mpa": (
+                    m.pressure_mpa
+                ),
+                "ink_level_percent": (
+                    m.ink_level_percent
+                ),
+                "makeup_level_percent": (
+                    m.makeup_level_percent
+                ),
+                "timestamp": (
+                    m.timestamp.isoformat()
+                ),
+            }
+            for m in rows
+        ]
+
+
+@app.get("/api/alerts")
+async def alerts(
+    limit: int = 100,
+    status: str | None = None,
+    severity: str | None = None,
+    device_id: str | None = None,
+):
+    limit = max(
+        1,
+        min(limit, 500),
+    )
+
+    with SessionLocal() as db:
+        query = select(Alert)
+
+        if status == "active":
+            query = query.where(
+                Alert.active.is_(True)
+            )
+
+        elif status == "resolved":
+            query = query.where(
+                Alert.active.is_(False)
+            )
+
+        if severity:
+            query = query.where(
+                Alert.severity
+                == severity
+            )
+
+        if device_id:
+            query = query.where(
+                Alert.device_id
+                == device_id
+            )
+
+        rows = db.scalars(
+            query
+            .order_by(
+                desc(Alert.created_at)
+            )
+            .limit(limit)
+        ).all()
+
+        return [
+            {
+                "id": a.id,
+                "device_id": (
+                    a.device_id
+                ),
+                "alert_type": (
+                    a.alert_type
+                ),
+                "severity": (
+                    a.severity
+                ),
+                "message": (
+                    a.message
+                ),
+                "active": a.active,
+                "created_at": (
+                    a.created_at
+                    .isoformat()
+                ),
+                "resolved_at": (
+                    a.resolved_at
+                    .isoformat()
+                    if a.resolved_at
+                    else None
+                ),
+            }
+            for a in rows
+        ]
+
+
+@app.get(
+    "/api/alerts/active"
+)
+async def active_alerts():
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(Alert)
+            .where(
+                Alert.active.is_(True)
+            )
+            .order_by(
+                desc(Alert.created_at)
+            )
+        ).all()
+
+        return [
+            {
+                "id": a.id,
+                "device_id": (
+                    a.device_id
+                ),
+                "alert_type": (
+                    a.alert_type
+                ),
+                "severity": (
+                    a.severity
+                ),
+                "message": (
+                    a.message
+                ),
+                "created_at": (
+                    a.created_at
+                    .isoformat()
+                ),
+            }
+            for a in rows
+        ]
+
+
+@app.get(
+    "/api/configuration"
+)
+async def configuration():
+    with SessionLocal() as db:
+        config = get_configuration(db)
+
+        return {
+            "collector_interval_seconds": (
+                config
+                .collector_interval_seconds
+            ),
+            "offline_timeout_seconds": (
+                config
+                .offline_timeout_seconds
+            ),
+            "temperature_high": (
+                config.temperature_high
+            ),
+            "pressure_low": (
+                config.pressure_low
+            ),
+            "pressure_high": (
+                config.pressure_high
+            ),
+            "ink_low": (
+                config.ink_low
+            ),
+            "makeup_low": (
+                config.makeup_low
+            ),
+            "printer_mode": (
+                config.printer_mode
+            ),
+            "printer_host": (
+                config.printer_host
+            ),
+            "printer_port": (
+                config.printer_port
+            ),
+            "device_id": (
+                config.device_id
+            ),
+        }
+
+
+@app.put(
+    "/api/configuration"
+)
+async def update_configuration(
+    data: dict,
+):
+    with SessionLocal() as db:
+        config = get_configuration(db)
+
+        config.collector_interval_seconds = int(
+            data[
+                "collector_interval_seconds"
+            ]
+        )
+
+        config.offline_timeout_seconds = int(
+            data[
+                "offline_timeout_seconds"
+            ]
+        )
+
+        config.temperature_high = float(
+            data["temperature_high"]
+        )
+
+        config.pressure_low = float(
+            data["pressure_low"]
+        )
+
+        config.pressure_high = float(
+            data["pressure_high"]
+        )
+
+        config.ink_low = int(
+            data["ink_low"]
+        )
+
+        config.makeup_low = int(
+            data["makeup_low"]
+        )
+
+        config.printer_mode = str(
+            data["printer_mode"]
+        )
+
+        config.printer_host = str(
+            data["printer_host"]
+        )
+
+        config.printer_port = int(
+            data["printer_port"]
+        )
+
+        config.device_id = int(
+            data["device_id"]
+        )
+
+        db.commit()
+        db.refresh(config)
+
+        return {
+            "status": "ok",
+            "configuration": {
+                "collector_interval_seconds": (
+                    config
+                    .collector_interval_seconds
+                ),
+                "offline_timeout_seconds": (
+                    config
+                    .offline_timeout_seconds
+                ),
+                "temperature_high": (
+                    config.temperature_high
+                ),
+                "pressure_low": (
+                    config.pressure_low
+                ),
+                "pressure_high": (
+                    config.pressure_high
+                ),
+                "ink_low": (
+                    config.ink_low
+                ),
+                "makeup_low": (
+                    config.makeup_low
+                ),
+                "printer_mode": (
+                    config.printer_mode
+                ),
+                "printer_host": (
+                    config.printer_host
+                ),
+                "printer_port": (
+                    config.printer_port
+                ),
+                "device_id": (
+                    config.device_id
+                ),
+            },
+        }
+
+
+@app.websocket(
+    "/ws/collector/{device_id}"
+)
+async def collector_websocket(
+    websocket: WebSocket,
+    device_id: str,
+):
+    await websocket.accept()
+
+    print(
+        f"Collector connected: "
+        f"{device_id}"
+    )
+
+    try:
+        while True:
+            data = (
+                await websocket
+                .receive_json()
+            )
+
+            timestamp = (
+                datetime.fromisoformat(
+                    data["timestamp"]
+                )
+            )
+
+            with SessionLocal() as db:
+                measurement = Measurement(
+                    device_id=data[
+                        "device_id"
+                    ],
+                    source=data[
+                        "source"
+                    ],
+                    online=True,
+                    status=data[
+                        "status"
+                    ],
+                    print_count=data[
+                        "print_count"
+                    ],
+                    temperature_c=data[
+                        "temperature_c"
+                    ],
+                    pressure_mpa=data[
+                        "pressure_mpa"
+                    ],
+                    ink_level_percent=data[
+                        "ink_level_percent"
+                    ],
+                    makeup_level_percent=data[
+                        "makeup_level_percent"
+                    ],
+                    timestamp=timestamp,
+                )
+
+                db.add(measurement)
+
+                device = db.get(
+                    Device,
+                    device_id,
+                )
+
+                if device is None:
+                    device = Device(
+                        device_id=device_id,
+                        source=data[
+                            "source"
+                        ],
+                        online=True,
+                        status=data[
+                            "status"
+                        ],
+                        last_seen=timestamp,
+                        print_count=data[
+                            "print_count"
+                        ],
+                        temperature_c=data[
+                            "temperature_c"
+                        ],
+                        pressure_mpa=data[
+                            "pressure_mpa"
+                        ],
+                        ink_level_percent=data[
+                            "ink_level_percent"
+                        ],
+                        makeup_level_percent=data[
+                            "makeup_level_percent"
+                        ],
+                    )
+
+                    db.add(device)
+
+                else:
+                    device.source = data[
+                        "source"
+                    ]
+
+                    device.online = True
+
+                    device.status = data[
+                        "status"
+                    ]
+
+                    device.last_seen = (
+                        timestamp
+                    )
+
+                    device.print_count = data[
+                        "print_count"
+                    ]
+
+                    device.temperature_c = data[
+                        "temperature_c"
+                    ]
+
+                    device.pressure_mpa = data[
+                        "pressure_mpa"
+                    ]
+
+                    device.ink_level_percent = data[
+                        "ink_level_percent"
+                    ]
+
+                    device.makeup_level_percent = data[
+                        "makeup_level_percent"
+                    ]
+
+                # Receiving data means the
+                # printer is no longer offline.
+                set_alert(
+                    db,
+                    device_id=device_id,
+                    alert_type="offline",
+                    severity="critical",
+                    message="Device offline",
+                    active=False,
+                )
+
+                config = (
+                    get_configuration(db)
+                )
+
+                evaluate_measurement(
+                    db,
+                    data,
+                    config,
+                )
+
+                db.commit()
+
+            print(
+                f"Measurement stored: "
+                f"{device_id} | "
+                f"prints="
+                f"{data['print_count']}"
+            )
+
+    except WebSocketDisconnect:
+        print(
+            f"Collector disconnected: "
+            f"{device_id}"
+        )
+
+    except Exception as exc:
+        print(
+            f"Collector WebSocket error "
+            f"for {device_id}: {exc}"
+        )
+
+        try:
+            await websocket.close()
+        except Exception:
+            pass

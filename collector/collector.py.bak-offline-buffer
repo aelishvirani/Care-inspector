@@ -1,0 +1,236 @@
+import asyncio
+import json
+import logging
+
+import websockets
+
+from config import load_configuration
+from printers.simulator import SimulatorPrinter
+from printers.hitachi_modbus import HitachiModbusPrinter
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        "%(asctime)s | "
+        "%(levelname)s | "
+        "%(message)s"
+    ),
+)
+
+
+BACKEND_BASE = "ws://127.0.0.1:8000"
+
+
+def build_printer(configuration):
+    mode = configuration[
+        "printer_mode"
+    ]
+
+    host = configuration[
+        "printer_host"
+    ]
+
+    port = int(
+        configuration[
+            "printer_port"
+        ]
+    )
+
+    device_id = int(
+        configuration[
+            "device_id"
+        ]
+    )
+
+    if mode == "simulator":
+        return SimulatorPrinter(
+            host=host,
+            port=port,
+            device_id=device_id,
+            printer_id=(
+                "hitachi-ux2-"
+                "simulator-001"
+            ),
+        )
+
+    if mode == "hitachi_modbus":
+        return HitachiModbusPrinter(
+            host=host,
+            port=port,
+            device_id=device_id,
+            printer_id=(
+                "hitachi-ux2-real-001"
+            ),
+        )
+
+    raise ValueError(
+        f"Unsupported printer mode: "
+        f"{mode}"
+    )
+
+
+async def run_collector():
+    while True:
+        printer = None
+
+        try:
+            configuration = (
+                load_configuration()
+            )
+
+            interval = int(
+                configuration[
+                    "collector_interval_seconds"
+                ]
+            )
+
+            printer = build_printer(
+                configuration
+            )
+
+            device_name = (
+                printer.printer_id
+            )
+
+            backend_ws = (
+                f"{BACKEND_BASE}/"
+                f"ws/collector/"
+                f"{device_name}"
+            )
+
+            logging.info(
+                "Loaded configuration | "
+                "mode=%s | host=%s | "
+                "port=%s | device_id=%s | "
+                "interval=%ss",
+                configuration[
+                    "printer_mode"
+                ],
+                configuration[
+                    "printer_host"
+                ],
+                configuration[
+                    "printer_port"
+                ],
+                configuration[
+                    "device_id"
+                ],
+                interval,
+            )
+
+            connected = (
+                await printer.connect()
+            )
+
+            if connected is False:
+                raise ConnectionError(
+                    "Could not connect "
+                    "to printer"
+                )
+
+            logging.info(
+                "Connected to printer | "
+                "mode=%s | device=%s",
+                configuration[
+                    "printer_mode"
+                ],
+                device_name,
+            )
+
+            try:
+                while True:
+                    try:
+                        async with (
+                            websockets.connect(
+                                backend_ws
+                            )
+                            as websocket
+                        ):
+                            logging.info(
+                                "Connected to "
+                                "Care-Inspector "
+                                "backend"
+                            )
+
+                            while True:
+                                measurement = (
+                                    await printer
+                                    .read_measurement()
+                                )
+
+                                await websocket.send(
+                                    json.dumps(
+                                        measurement
+                                    )
+                                )
+
+                                logging.info(
+                                    "Measurement sent | "
+                                    "source=%s | "
+                                    "status=%s | "
+                                    "prints=%s | "
+                                    "temp=%s C | "
+                                    "pressure=%s MPa",
+                                    measurement.get(
+                                        "source"
+                                    ),
+                                    measurement.get(
+                                        "status"
+                                    ),
+                                    measurement.get(
+                                        "print_count"
+                                    ),
+                                    measurement.get(
+                                        "temperature_c"
+                                    ),
+                                    measurement.get(
+                                        "pressure_mpa"
+                                    ),
+                                )
+
+                                await asyncio.sleep(
+                                    interval
+                                )
+
+                    except Exception as exc:
+                        logging.error(
+                            "Collector runtime "
+                            "error: %s",
+                            exc,
+                        )
+
+                        logging.info(
+                            "Retrying in "
+                            "5 seconds..."
+                        )
+
+                        await asyncio.sleep(5)
+
+            finally:
+                await printer.disconnect()
+
+        except Exception as exc:
+            logging.error(
+                "Collector startup error: %s",
+                exc,
+            )
+
+            if printer is not None:
+                try:
+                    await printer.disconnect()
+                except Exception:
+                    pass
+
+            logging.info(
+                "Reloading configuration "
+                "in 5 seconds..."
+            )
+
+            await asyncio.sleep(5)
+
+
+if __name__ == "__main__":
+    asyncio.run(
+        run_collector()
+    )

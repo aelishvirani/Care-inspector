@@ -1,4 +1,6 @@
-import { apiGet } from '../api/client'
+import {
+  apiGet,
+} from '../api/client'
 
 
 export function getMeasurementHistory({
@@ -10,7 +12,10 @@ export function getMeasurementHistory({
   const params =
     new URLSearchParams()
 
-  params.set('limit', limit)
+  params.set(
+    'limit',
+    String(limit)
+  )
 
   if (deviceId) {
     params.set(
@@ -34,6 +39,6 @@ export function getMeasurementHistory({
   }
 
   return apiGet(
-    `/measurements?${params.toString()}`
+    `/secure/measurements?${params.toString()}`
   )
 }

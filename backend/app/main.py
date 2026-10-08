@@ -2,15 +2,44 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+)
+
+from pydantic import BaseModel
 from sqlalchemy import desc, select
 
 from .alerts import evaluate_measurement, set_alert
 from .database import Base, SessionLocal, engine
-from .models import Alert, Configuration, Device, Measurement
+from .models import (
+    Alert,
+    Configuration,
+    Customer,
+    Device,
+    Measurement,
+    User,
+)
+
+from .auth import (
+    create_access_token,
+    get_current_user,
+    require_technician,
+    verify_password,
+)
 
 
 OFFLINE_CHECK_INTERVAL = 5
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 
 
 def utc_now():
@@ -954,3 +983,253 @@ async def collector_websocket(
             await websocket.close()
         except Exception:
             pass
+
+
+
+# =========================================================
+# Authentication
+# =========================================================
+
+@app.post("/api/auth/login")
+async def login(
+    request: LoginRequest,
+):
+    with SessionLocal() as db:
+
+        user = db.scalar(
+            select(User).where(
+                User.email == request.email
+            )
+        )
+
+        if (
+            user is None
+            or not user.active
+            or not verify_password(
+                request.password,
+                user.password_hash,
+            )
+        ):
+            raise HTTPException(
+                status_code=401,
+                detail=(
+                    "Invalid email or password"
+                ),
+            )
+
+        token = create_access_token(
+            user
+        )
+
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "customer_id": (
+                    user.customer_id
+                ),
+            },
+        }
+
+
+@app.get("/api/auth/me")
+async def auth_me(
+    user: User = Depends(
+        get_current_user
+    ),
+):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "customer_id": (
+            user.customer_id
+        ),
+    }
+
+
+# =========================================================
+# Secure device access
+# =========================================================
+
+@app.get("/api/secure/devices")
+async def secure_devices(
+    user: User = Depends(
+        get_current_user
+    ),
+):
+    with SessionLocal() as db:
+
+        query = select(Device)
+
+        if user.role == "CUSTOMER":
+
+            if user.customer_id is None:
+                return []
+
+            query = query.where(
+                Device.customer_id
+                == user.customer_id
+            )
+
+        elif user.role in {
+            "TECHNICIAN",
+            "ADMIN",
+        }:
+            pass
+
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="Unsupported user role",
+            )
+
+        rows = db.scalars(
+            query.order_by(
+                Device.device_id
+            )
+        ).all()
+
+        return [
+            {
+                "device_id": d.device_id,
+
+                "display_name": (
+                    d.display_name
+                ),
+
+                "customer_id": (
+                    d.customer_id
+                ),
+
+                "location": (
+                    d.location
+                ),
+
+                "source": d.source,
+                "online": d.online,
+                "status": d.status,
+
+                "last_seen": (
+                    d.last_seen.isoformat()
+                    if d.last_seen
+                    else None
+                ),
+
+                "model_name": (
+                    d.model_name
+                ),
+
+                "serial_number": (
+                    d.serial_number
+                ),
+
+                "ink_name": (
+                    d.ink_name
+                ),
+
+                "print_count": (
+                    d.print_count
+                ),
+
+                "temperature_c": (
+                    d.temperature_c
+                ),
+
+                "pressure_mpa": (
+                    d.pressure_mpa
+                ),
+
+                "ink_operating_time_hours": (
+                    d.ink_operating_time_hours
+                ),
+
+                "cumulative_operation_time_hours": (
+                    d.cumulative_operation_time_hours
+                ),
+
+                "ink_remaining_raw": (
+                    d.ink_remaining_raw
+                ),
+
+                "ink_remaining_label": (
+                    d.ink_remaining_label
+                ),
+
+                "makeup_remaining_raw": (
+                    d.makeup_remaining_raw
+                ),
+
+                "makeup_remaining_label": (
+                    d.makeup_remaining_label
+                ),
+            }
+            for d in rows
+        ]
+
+
+# =========================================================
+# Technician customer access
+# =========================================================
+
+@app.get("/api/secure/customers")
+async def secure_customers(
+    user: User = Depends(
+        get_current_user
+    ),
+):
+    require_technician(
+        user
+    )
+
+    with SessionLocal() as db:
+
+        rows = db.scalars(
+            select(Customer)
+            .order_by(Customer.name)
+        ).all()
+
+        return [
+            {
+                "id": customer.id,
+                "name": customer.name,
+
+                "address": (
+                    customer.address
+                ),
+
+                "contact_name": (
+                    customer.contact_name
+                ),
+
+                "contact_email": (
+                    customer.contact_email
+                ),
+
+                "contact_phone": (
+                    customer.contact_phone
+                ),
+
+                "active": (
+                    customer.active
+                ),
+            }
+            for customer in rows
+        ]
+
+
+# Technician management API
+from .management import router as management_router
+app.include_router(management_router)
+
+
+# Secure customer/technician data API
+from .secure_data import router as secure_data_router
+app.include_router(secure_data_router)
+
+# Admin API
+from .admin import router as admin_router
+app.include_router(admin_router)

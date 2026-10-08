@@ -1,0 +1,708 @@
+.role-dashboard {
+  width: 100%;
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: 30px 32px 60px;
+}
+
+.role-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.role-dashboard-header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.role-dashboard-header p {
+  margin: 7px 0 0;
+  color: #6f7d88;
+  font-size: 14px;
+}
+
+.role-dashboard-eyebrow {
+  display: inline-block;
+  margin-bottom: 7px;
+
+  color: #168c9b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.role-refresh-button {
+  border: 1px solid #ccd5db;
+  background: white;
+  color: #27333d;
+
+  min-width: 100px;
+  padding: 10px 16px;
+
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.role-refresh-button:hover {
+  background: #f2f6f8;
+}
+
+
+/* ======================================================
+   KPI cards
+   ====================================================== */
+
+.role-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+
+  margin-bottom: 26px;
+}
+
+.role-kpi {
+  background: white;
+  border: 1px solid #dce3e7;
+  padding: 20px 22px;
+  min-height: 118px;
+}
+
+.role-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.role-kpi-label {
+  color: #6f7c86;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .65px;
+}
+
+.role-kpi-icon {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef6f7;
+  color: #158d9b;
+
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.role-kpi-value {
+  display: block;
+
+  margin-top: 13px;
+
+  font-size: 31px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.role-kpi-hint {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #89949c;
+  font-size: 11px;
+}
+
+.role-kpi.problem .role-kpi-icon {
+  background: #fff3e2;
+  color: #b96d00;
+}
+
+.role-kpi.offline .role-kpi-icon {
+  background: #fdebed;
+  color: #b02a37;
+}
+
+
+/* ======================================================
+   Sections
+   ====================================================== */
+
+.role-section {
+  background: white;
+  border: 1px solid #dce3e7;
+
+  margin-bottom: 24px;
+}
+
+.role-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 72px;
+  padding: 16px 20px;
+
+  border-bottom: 1px solid #e8edef;
+}
+
+.role-section-header h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.role-section-header p {
+  margin: 4px 0 0;
+  color: #7d8992;
+  font-size: 12px;
+}
+
+.role-section-count {
+  min-width: 34px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef2f4;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+
+/* ======================================================
+   Customer printer cards
+   ====================================================== */
+
+.customer-printer-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+.customer-printer-card {
+  background: white;
+  border: 1px solid #dce3e7;
+
+  min-width: 0;
+}
+
+.customer-printer-card.attention {
+  border-top: 3px solid #d99a17;
+}
+
+.customer-printer-card.online {
+  border-top: 3px solid #18865b;
+}
+
+.customer-printer-card.offline {
+  border-top: 3px solid #bd3340;
+}
+
+.customer-printer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+
+  padding: 20px;
+
+  border-bottom: 1px solid #e7ecef;
+}
+
+.customer-printer-title {
+  min-width: 0;
+}
+
+.customer-printer-title h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.customer-printer-title p {
+  margin: 4px 0 0;
+
+  color: #76838d;
+  font-size: 13px;
+}
+
+.customer-printer-serial {
+  display: block;
+  margin-top: 7px;
+
+  color: #919ca4;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.fleet-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 6px 10px;
+
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.fleet-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.fleet-status.online {
+  color: #16794f;
+  background: #e9f7ef;
+}
+
+.fleet-status.offline {
+  color: #ae2835;
+  background: #fdebed;
+}
+
+.fleet-status.warning {
+  color: #936100;
+  background: #fff3d7;
+}
+
+.fleet-status.fault {
+  color: #a61e29;
+  background: #fde2e5;
+}
+
+.customer-printer-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 0;
+
+  border-bottom: 1px solid #e7ecef;
+}
+
+.customer-printer-meta > div {
+  padding: 14px 18px;
+}
+
+.customer-printer-meta > div + div {
+  border-left: 1px solid #e7ecef;
+}
+
+.customer-printer-meta span {
+  display: block;
+
+  color: #849099;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.customer-printer-meta strong {
+  display: block;
+
+  margin-top: 4px;
+
+  font-size: 12px;
+}
+
+.customer-printer-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  background: #e8edef;
+  gap: 1px;
+}
+
+.customer-mini-metric {
+  background: white;
+  padding: 16px 18px;
+}
+
+.customer-mini-metric span {
+  display: block;
+
+  color: #7a8790;
+  font-size: 11px;
+}
+
+.customer-mini-metric strong {
+  display: block;
+
+  margin-top: 5px;
+
+  font-size: 19px;
+}
+
+.customer-mini-metric small {
+  margin-left: 3px;
+
+  color: #75818a;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+/* ======================================================
+   Technician attention list
+   ====================================================== */
+
+.technician-attention-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.technician-attention-item {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.3fr)
+    minmax(150px, 1fr)
+    minmax(130px, .8fr)
+    auto;
+
+  align-items: center;
+  gap: 18px;
+
+  min-height: 72px;
+
+  padding: 14px 20px;
+
+  border-bottom: 1px solid #e8edef;
+  border-left: 4px solid #d89b18;
+}
+
+.technician-attention-item:last-child {
+  border-bottom: 0;
+}
+
+.technician-attention-item.offline {
+  border-left-color: #bd3340;
+}
+
+.technician-attention-item.warning {
+  border-left-color: #d89b18;
+}
+
+.technician-attention-item.fault {
+  border-left-color: #a61e29;
+}
+
+.attention-primary strong {
+  display: block;
+  font-size: 13px;
+}
+
+.attention-primary span,
+.attention-secondary {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #7a8790;
+  font-size: 11px;
+}
+
+.attention-status {
+  justify-self: end;
+}
+
+
+/* ======================================================
+   Technician customer cards
+   ====================================================== */
+
+.technician-customer-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 16px;
+
+  padding: 18px;
+}
+
+.technician-customer-card {
+  border: 1px solid #dfe5e8;
+  padding: 18px;
+}
+
+.technician-customer-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-bottom: 16px;
+}
+
+.technician-customer-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.technician-customer-card-address {
+  margin: 4px 0 0;
+
+  color: #7e8a93;
+  font-size: 11px;
+}
+
+.customer-printer-count {
+  min-width: 42px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef3f5;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.technician-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.technician-contact-item span {
+  display: block;
+
+  color: #8a959d;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .55px;
+}
+
+.technician-contact-item strong {
+  display: block;
+
+  margin-top: 3px;
+
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+
+/* ======================================================
+   Fleet table
+   ====================================================== */
+
+.fleet-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.fleet-table {
+  width: 100%;
+
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.fleet-table th {
+  padding: 12px 16px;
+
+  background: #f5f7f8;
+  color: #6f7c85;
+
+  border-bottom: 1px solid #dde4e7;
+
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-size: 10px;
+}
+
+.fleet-table td {
+  padding: 14px 16px;
+
+  border-bottom: 1px solid #e7ecef;
+
+  vertical-align: middle;
+}
+
+.fleet-table tbody tr:hover {
+  background: #f8fafb;
+}
+
+.fleet-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.fleet-printer-name {
+  font-weight: 800;
+}
+
+.fleet-printer-id {
+  display: block;
+  margin-top: 2px;
+
+  color: #8a959d;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+
+/* ======================================================
+   Search / filter
+   ====================================================== */
+
+.role-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 18px;
+}
+
+.role-search {
+  width: 320px;
+  max-width: 100%;
+
+  background: white;
+  border: 1px solid #ccd6db;
+
+  padding: 10px 12px;
+
+  outline: none;
+}
+
+.role-search:focus {
+  border-color: #1595a3;
+}
+
+.role-filter {
+  background: white;
+  border: 1px solid #ccd6db;
+
+  padding: 10px 12px;
+}
+
+
+/* ======================================================
+   Empty / healthy states
+   ====================================================== */
+
+.role-healthy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  padding: 24px 20px;
+}
+
+.role-healthy-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #e8f7ef;
+  color: #178457;
+
+  font-weight: 900;
+  border-radius: 50%;
+}
+
+.role-healthy strong {
+  font-size: 13px;
+}
+
+.role-healthy p {
+  margin: 3px 0 0;
+
+  color: #7e8992;
+  font-size: 11px;
+}
+
+
+/* ======================================================
+   Responsive
+   ====================================================== */
+
+@media (max-width: 1180px) {
+  .customer-printer-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .role-kpi-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 850px) {
+  .technician-customer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .technician-attention-item {
+    grid-template-columns: 1fr;
+  }
+
+  .attention-status {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 680px) {
+  .role-dashboard {
+    padding: 22px 16px 40px;
+  }
+
+  .role-dashboard-header {
+    flex-direction: column;
+  }
+
+  .customer-printer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-printer-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-printer-meta > div + div {
+    border-left: 0;
+    border-top: 1px solid #e7ecef;
+  }
+
+  .technician-contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .role-search {
+    width: 100%;
+  }
+}

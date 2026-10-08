@@ -1,4 +1,7 @@
-import { apiGet } from '../api/client'
+import {
+  apiGet,
+  apiPost,
+} from '../api/client'
 
 
 export function getAlerts({
@@ -10,14 +13,23 @@ export function getAlerts({
   const params =
     new URLSearchParams()
 
-  params.set('limit', limit)
+  params.set(
+    'limit',
+    String(limit)
+  )
 
   if (status) {
-    params.set('status', status)
+    params.set(
+      'status',
+      status
+    )
   }
 
   if (severity) {
-    params.set('severity', severity)
+    params.set(
+      'severity',
+      severity
+    )
   }
 
   if (deviceId) {
@@ -28,6 +40,16 @@ export function getAlerts({
   }
 
   return apiGet(
-    `/alerts?${params.toString()}`
+    `/secure/alerts?${params.toString()}`
+  )
+}
+
+
+export function acknowledgeAlert(
+  alertId
+) {
+  return apiPost(
+    `/secure/alerts/${alertId}/acknowledge`,
+    {}
   )
 }

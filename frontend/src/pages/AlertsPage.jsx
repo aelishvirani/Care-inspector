@@ -1,6 +1,11 @@
 import {
+  useMemo,
   useState,
 } from 'react'
+
+import {
+  useSearchParams,
+} from 'react-router-dom'
 
 import AlertTable
   from '../components/alerts/AlertTable'
@@ -16,14 +21,42 @@ import {
 
 export default function AlertsPage() {
 
-  const [status, setStatus] =
-    useState('')
+  const [
+    searchParams,
+    setSearchParams,
+  ] = useSearchParams()
 
-  const [severity, setSeverity] =
-    useState('')
 
-  const [deviceId, setDeviceId] =
-    useState('')
+  const initialDevice =
+    searchParams.get(
+      'device_id'
+    ) || ''
+
+
+  const [
+    status,
+    setStatus,
+  ] = useState('')
+
+
+  const [
+    severity,
+    setSeverity,
+  ] = useState('')
+
+
+  const [
+    deviceId,
+    setDeviceId,
+  ] = useState(
+    initialDevice
+  )
+
+
+  const [
+    search,
+    setSearch,
+  ] = useState('')
 
 
   const {
@@ -43,17 +76,71 @@ export default function AlertsPage() {
   })
 
 
+  const filteredAlerts =
+    useMemo(
+      () => {
+        const term =
+          search
+            .trim()
+            .toLowerCase()
+
+        if (!term) {
+          return alerts
+        }
+
+        return alerts.filter(
+          alert =>
+            [
+              alert.alert_type,
+              alert.message,
+              alert.device_id,
+              alert.severity,
+            ]
+              .filter(Boolean)
+              .some(
+                value =>
+                  String(value)
+                    .toLowerCase()
+                    .includes(term)
+              )
+        )
+      },
+      [
+        alerts,
+        search,
+      ]
+    )
+
+
   const activeCount =
-    alerts.filter(
-      alert => alert.active
+    filteredAlerts.filter(
+      alert =>
+        alert.active
+        && !alert.acknowledged_at
     ).length
 
 
   const criticalCount =
-    alerts.filter(
+    filteredAlerts.filter(
       alert =>
-        alert.severity === 'critical'
+        alert.severity
+          === 'critical'
     ).length
+
+
+  function updateDevice(
+    value
+  ) {
+    setDeviceId(value)
+
+    if (value) {
+      setSearchParams({
+        device_id: value,
+      })
+    } else {
+      setSearchParams({})
+    }
+  }
 
 
   return (
@@ -62,7 +149,9 @@ export default function AlertsPage() {
       <div className="page-heading">
 
         <div>
-          <h1>Alerts</h1>
+          <h1>
+            Alerts & Problems
+          </h1>
 
           <p>
             Current and historical
@@ -95,7 +184,9 @@ export default function AlertsPage() {
           </span>
 
           <strong>
-            {alerts.length}
+            {
+              filteredAlerts.length
+            }
           </strong>
         </div>
 
@@ -131,6 +222,29 @@ export default function AlertsPage() {
           <div className="filter-group">
 
             <label>
+              Search
+            </label>
+
+            <input
+              type="search"
+              placeholder={
+                'Problem, printer, message...'
+              }
+              value={search}
+              onChange={
+                event =>
+                  setSearch(
+                    event.target.value
+                  )
+              }
+            />
+
+          </div>
+
+
+          <div className="filter-group">
+
+            <label>
               Status
             </label>
 
@@ -149,6 +263,10 @@ export default function AlertsPage() {
 
               <option value="active">
                 Active
+              </option>
+
+              <option value="acknowledged">
+                Acknowledged
               </option>
 
               <option value="resolved">
@@ -200,11 +318,12 @@ export default function AlertsPage() {
               value={deviceId}
               onChange={
                 event =>
-                  setDeviceId(
+                  updateDevice(
                     event.target.value
                   )
               }
             >
+
               <option value="">
                 All printers
               </option>
@@ -212,6 +331,7 @@ export default function AlertsPage() {
               {
                 printers.map(
                   printer => (
+
                     <option
                       key={
                         printer.device_id
@@ -221,9 +341,11 @@ export default function AlertsPage() {
                       }
                     >
                       {
-                        printer.device_id
+                        printer.display_name
+                        || printer.device_id
                       }
                     </option>
+
                   )
                 )
               }
@@ -236,9 +358,11 @@ export default function AlertsPage() {
           <button
             className="clear-filter-button"
             onClick={() => {
+              setSearch('')
               setStatus('')
               setSeverity('')
               setDeviceId('')
+              setSearchParams({})
             }}
           >
             Clear filters
@@ -247,19 +371,24 @@ export default function AlertsPage() {
         </div>
 
 
-        {loading ? (
-
-          <div className="loading-panel">
-            Loading alerts...
-          </div>
-
-        ) : (
-
-          <AlertTable
-            alerts={alerts}
-          />
-
-        )}
+        {
+          loading
+          ? (
+            <div className="loading-panel">
+              Loading alerts...
+            </div>
+          )
+          : (
+            <AlertTable
+              alerts={
+                filteredAlerts
+              }
+              onAcknowledged={
+                refresh
+              }
+            />
+          )
+        }
 
       </section>
 

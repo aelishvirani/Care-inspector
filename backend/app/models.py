@@ -211,6 +211,157 @@ class Device(Base):
         nullable=True,
     )
 
+    customer_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        index=True,
+    )
+
+    display_name: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    location: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    address: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    contact_name: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    contact_email: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    contact_phone: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    email: Mapped[str] = mapped_column(
+        String,
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    password_hash: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    role: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="CUSTOMER",
+    )
+
+    customer_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        index=True,
+    )
+
+    active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+    )
+
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    actor_user_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        index=True,
+    )
+
+    actor_email: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
+    )
+
+    actor_role: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
+    )
+
+    action: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        index=True,
+    )
+
+    object_type: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    object_id: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    details: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -253,6 +404,21 @@ class Alert(Base):
         datetime | None
     ] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+    acknowledged_at: Mapped[
+        datetime | None
+    ] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    acknowledged_by: Mapped[
+        str | None
+    ] = mapped_column(
+        String,
         nullable=True,
     )
 

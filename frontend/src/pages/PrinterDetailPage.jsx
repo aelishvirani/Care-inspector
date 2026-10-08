@@ -73,16 +73,61 @@ export default function PrinterDetailPage() {
             to="/printers"
             className="back-link"
           >
-            ← Printers
+            ← Printer Fleet
           </Link>
 
           <h1>
-            Printer Detail
+            {
+              printer.display_name
+              || 'Printer Detail'
+            }
           </h1>
 
           <p>
-            {printer.device_id}
+            {
+              printer.model_name
+              || printer.device_id
+            }
+            {' · Serial '}
+            {
+              printer.serial_number
+              ?? '—'
+            }
           </p>
+
+        </div>
+
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            flexWrap: 'wrap',
+          }}
+        >
+
+          <Link
+            className="secondary-button"
+            to={
+              `/history?device_id=${encodeURIComponent(
+                printer.device_id
+              )}`
+            }
+          >
+            History
+          </Link>
+
+
+          <Link
+            className="secondary-button"
+            to={
+              `/alerts?device_id=${encodeURIComponent(
+                printer.device_id
+              )}`
+            }
+          >
+            Alerts
+          </Link>
 
         </div>
 
@@ -121,96 +166,110 @@ export default function PrinterDetailPage() {
               </p>
             </div>
 
+
+            <Link
+              className="detail-link"
+              to={
+                `/alerts?device_id=${encodeURIComponent(
+                  printer.device_id
+                )}`
+              }
+            >
+              View all
+            </Link>
+
           </div>
 
 
           <div className="detail-alert-list">
 
-            {alerts.length === 0 ? (
+            {
+              alerts.length === 0
+              ? (
+                <div className="healthy-state">
 
-              <div className="healthy-state">
-
-                <div className="healthy-icon">
-                  ✓
-                </div>
-
-                <div>
-                  <strong>
-                    No alert history
-                  </strong>
-
-                  <p>
-                    No alerts recorded
-                    for this printer.
-                  </p>
-                </div>
-
-              </div>
-
-            ) : (
-
-              alerts
-                .slice(0, 10)
-                .map(alert => (
-
-                  <div
-                    key={alert.id}
-                    className={
-                      `detail-alert ${
-                        alert.severity
-                      }`
-                    }
-                  >
-
-                    <div>
-
-                      <strong>
-                        {
-                          alert.alert_type
-                            .replaceAll(
-                              '_',
-                              ' '
-                            )
-                            .toUpperCase()
-                        }
-                      </strong>
-
-                      <p>
-                        {alert.message}
-                      </p>
-
-                    </div>
-
-
-                    <div className="detail-alert-meta">
-
-                      <span
-                        className={
-                          alert.active
-                            ? 'alert-state active'
-                            : 'alert-state resolved'
-                        }
-                      >
-                        {
-                          alert.active
-                            ? 'Active'
-                            : 'Resolved'
-                        }
-                      </span>
-
-                      <small>
-                        {formatDateTime(
-                          alert.created_at
-                        )}
-                      </small>
-
-                    </div>
-
+                  <div className="healthy-icon">
+                    ✓
                   </div>
 
-                ))
+                  <div>
+                    <strong>
+                      No alert history
+                    </strong>
 
-            )}
+                    <p>
+                      No alerts recorded
+                      for this printer.
+                    </p>
+                  </div>
+
+                </div>
+              )
+              : alerts
+                .slice(0, 10)
+                .map(
+                  alert => (
+
+                    <div
+                      key={alert.id}
+                      className={
+                        `detail-alert ${
+                          alert.severity
+                        }`
+                      }
+                    >
+
+                      <div>
+
+                        <strong>
+                          {
+                            alert.alert_type
+                              .replaceAll(
+                                '_',
+                                ' '
+                              )
+                              .toUpperCase()
+                          }
+                        </strong>
+
+                        <p>
+                          {alert.message}
+                        </p>
+
+                      </div>
+
+
+                      <div className="detail-alert-meta">
+
+                        <span
+                          className={
+                            alert.active
+                              ? 'alert-state active'
+                              : 'alert-state resolved'
+                          }
+                        >
+                          {
+                            alert.active
+                              ? 'Active'
+                              : 'Resolved'
+                          }
+                        </span>
+
+                        <small>
+                          {
+                            formatDateTime(
+                              alert.created_at
+                            )
+                          }
+                        </small>
+
+                      </div>
+
+                    </div>
+
+                  )
+                )
+            }
 
           </div>
 

@@ -1,5 +1,5 @@
 import {
-  Link,
+  useNavigate,
 } from 'react-router-dom'
 
 import StatusBadge
@@ -13,10 +13,14 @@ import {
 export default function PrinterTable({
   printers,
 }) {
+  const navigate =
+    useNavigate()
+
+
   if (printers.length === 0) {
     return (
       <div className="empty-state">
-        No printers registered.
+        No printers found.
       </div>
     )
   }
@@ -30,31 +34,67 @@ export default function PrinterTable({
         <thead>
           <tr>
             <th>Printer</th>
+            <th>Model</th>
+            <th>Serial</th>
             <th>Status</th>
-            <th>Source</th>
+            <th>Location</th>
             <th>Print Count</th>
             <th>Temperature</th>
             <th>Last Seen</th>
-            <th />
           </tr>
         </thead>
+
 
         <tbody>
 
           {printers.map(
             printer => (
 
-              <tr key={printer.device_id}>
+              <tr
+                key={
+                  printer.device_id
+                }
+                onClick={() =>
+                  navigate(
+                    `/printers/${encodeURIComponent(
+                      printer.device_id
+                    )}`
+                  )
+                }
+                style={{
+                  cursor: 'pointer',
+                }}
+              >
 
                 <td>
                   <div className="printer-name">
-                    Printer
+                    {
+                      printer.display_name
+                      || 'Printer'
+                    }
                   </div>
 
                   <div className="printer-table-id">
                     {printer.device_id}
                   </div>
                 </td>
+
+
+                <td>
+                  {
+                    printer.model_name
+                    || '—'
+                  }
+                </td>
+
+
+                <td>
+                  {
+                    printer.serial_number
+                    || '—'
+                  }
+                </td>
+
 
                 <td>
                   <StatusBadge
@@ -64,36 +104,44 @@ export default function PrinterTable({
                   />
                 </td>
 
-                <td>
-                  {printer.source}
-                </td>
 
                 <td>
-                  {printer.print_count}
+                  {
+                    printer.location
+                    || '—'
+                  }
                 </td>
 
-                <td>
-                  {printer.temperature_c}
-                  {' °C'}
-                </td>
 
                 <td>
-                  {formatDateTime(
-                    printer.last_seen
-                  )}
+                  {
+                    printer.print_count
+                    ?? '—'
+                  }
                 </td>
 
+
                 <td>
-                  <Link
-                    className="detail-link"
-                    to={
-                      `/printers/${encodeURIComponent(
-                        printer.device_id
-                      )}`
-                    }
-                  >
-                    View
-                  </Link>
+                  {
+                    printer.temperature_c
+                    ?? '—'
+                  }
+                  {
+                    printer.temperature_c
+                    !== null
+                    && printer.temperature_c
+                      !== undefined
+                    && ' °C'
+                  }
+                </td>
+
+
+                <td>
+                  {
+                    formatDateTime(
+                      printer.last_seen
+                    )
+                  }
                 </td>
 
               </tr>

@@ -1,3 +1,8 @@
+import {
+  useMemo,
+  useState,
+} from 'react'
+
 import PrinterTable
   from '../components/printers/PrinterTable'
 
@@ -13,6 +18,76 @@ export default function PrintersPage() {
     error,
   } = usePrinters()
 
+  const [
+    search,
+    setSearch,
+  ] = useState('')
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState('all')
+
+
+  const filteredPrinters =
+    useMemo(
+      () => {
+        const term =
+          search
+            .trim()
+            .toLowerCase()
+
+        return printers.filter(
+          printer => {
+
+            const matchesSearch =
+              !term
+              || [
+                printer.display_name,
+                printer.device_id,
+                printer.model_name,
+                printer.serial_number,
+                printer.location,
+                printer.status,
+                printer.ink_name,
+              ]
+                .filter(Boolean)
+                .some(
+                  value =>
+                    String(value)
+                      .toLowerCase()
+                      .includes(term)
+                )
+
+            const matchesStatus =
+              statusFilter === 'all'
+              || (
+                statusFilter === 'online'
+                && printer.online
+              )
+              || (
+                statusFilter === 'offline'
+                && !printer.online
+              )
+              || (
+                statusFilter
+                  === printer.status
+              )
+
+            return (
+              matchesSearch
+              && matchesStatus
+            )
+          }
+        )
+      },
+      [
+        printers,
+        search,
+        statusFilter,
+      ]
+    )
+
 
   if (loading) {
     return (
@@ -25,7 +100,8 @@ export default function PrintersPage() {
 
   const onlineCount =
     printers.filter(
-      printer => printer.online
+      printer =>
+        printer.online
     ).length
 
 
@@ -35,11 +111,13 @@ export default function PrintersPage() {
       <div className="page-heading">
 
         <div>
-          <h1>Printers</h1>
+          <h1>
+            Printer Fleet
+          </h1>
 
           <p>
-            Connected industrial printer
-            devices
+            All monitored industrial
+            printers
           </p>
         </div>
 
@@ -56,25 +134,36 @@ export default function PrintersPage() {
       <div className="printer-summary-grid">
 
         <div className="summary-card">
-          <span>Total Printers</span>
+          <span>
+            Total Printers
+          </span>
+
           <strong>
             {printers.length}
           </strong>
         </div>
 
+
         <div className="summary-card">
-          <span>Online</span>
+          <span>
+            Online
+          </span>
+
           <strong>
             {onlineCount}
           </strong>
         </div>
 
+
         <div className="summary-card">
-          <span>Offline</span>
+          <span>
+            Offline
+          </span>
+
           <strong>
             {
-              printers.length -
-              onlineCount
+              printers.length
+              - onlineCount
             }
           </strong>
         </div>
@@ -84,23 +173,110 @@ export default function PrintersPage() {
 
       <section className="panel">
 
+        <div className="filter-toolbar">
+
+          <div className="filter-group">
+
+            <label>
+              Search
+            </label>
+
+            <input
+              type="search"
+              placeholder={
+                'Printer, model, serial, location...'
+              }
+              value={search}
+              onChange={
+                event =>
+                  setSearch(
+                    event.target.value
+                  )
+              }
+            />
+
+          </div>
+
+
+          <div className="filter-group">
+
+            <label>
+              Status
+            </label>
+
+            <select
+              value={statusFilter}
+              onChange={
+                event =>
+                  setStatusFilter(
+                    event.target.value
+                  )
+              }
+            >
+              <option value="all">
+                All
+              </option>
+
+              <option value="online">
+                Online
+              </option>
+
+              <option value="offline">
+                Offline
+              </option>
+
+              <option value="warning">
+                Warning
+              </option>
+
+              <option value="fault">
+                Fault
+              </option>
+
+              <option value="stopped">
+                Stopped
+              </option>
+            </select>
+
+          </div>
+
+
+          <button
+            className="clear-filter-button"
+            onClick={() => {
+              setSearch('')
+              setStatusFilter('all')
+            }}
+          >
+            Clear filters
+          </button>
+
+        </div>
+
+
         <div className="panel-header">
 
           <div>
             <h2>
-              Registered Printers
+              Printers
             </h2>
 
             <p>
-              Current printer
-              connectivity and state
+              {
+                filteredPrinters.length
+              }
+              {' '}
+              matching printers
             </p>
           </div>
 
         </div>
 
+
         <PrinterTable
-          printers={printers}
+          printers={
+            filteredPrinters
+          }
         />
 
       </section>

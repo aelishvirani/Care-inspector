@@ -19,7 +19,7 @@ export function useHistory(filters) {
   ] = useState([])
 
   const [loading, setLoading] =
-    useState(true)
+    useState(false)
 
   const [error, setError] =
     useState(null)
@@ -27,7 +27,22 @@ export function useHistory(filters) {
 
   const refresh = useCallback(
     async () => {
+
+      /*
+       * History is always printer-specific.
+       * Never request mixed measurements
+       * without a device_id.
+       */
+      if (!filters.deviceId) {
+        setMeasurements([])
+        setLoading(false)
+        setError(null)
+        return
+      }
+
       try {
+        setLoading(true)
+
         const data =
           await getMeasurementHistory(
             filters
@@ -57,7 +72,11 @@ export function useHistory(filters) {
 
   useEffect(() => {
 
-    setLoading(true)
+    if (!filters.deviceId) {
+      setMeasurements([])
+      setLoading(false)
+      return
+    }
 
     refresh()
 
@@ -71,7 +90,7 @@ export function useHistory(filters) {
       clearInterval(interval)
     }
 
-  }, [refresh])
+  }, [refresh, filters.deviceId])
 
 
   return {

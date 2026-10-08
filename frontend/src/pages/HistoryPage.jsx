@@ -1,7 +1,13 @@
 import {
+  useEffect,
   useMemo,
   useState,
 } from 'react'
+
+import {
+  Link,
+  useSearchParams,
+} from 'react-router-dom'
 
 import {
   usePrinters,
@@ -32,7 +38,8 @@ function formatNativeLevel(
       .replaceAll('_', ' ')
       .replace(
         /\b\w/g,
-        char => char.toUpperCase()
+        char =>
+          char.toUpperCase()
       )
   }
 
@@ -43,21 +50,81 @@ function formatNativeLevel(
     return `Level ${raw}`
   }
 
-  return '-'
+  return '—'
+}
+
+
+function printerStatus(printer) {
+  if (!printer) {
+    return {
+      label: 'Unknown',
+      className: 'offline',
+    }
+  }
+
+  if (!printer.online) {
+    return {
+      label: 'Offline',
+      className: 'offline',
+    }
+  }
+
+  if (
+    printer.status === 'warning'
+  ) {
+    return {
+      label: 'Warning',
+      className: 'warning',
+    }
+  }
+
+  if (
+    printer.status === 'fault'
+  ) {
+    return {
+      label: 'Fault',
+      className: 'fault',
+    }
+  }
+
+  return {
+    label:
+      printer.status
+        ?.replaceAll('_', ' ')
+        ?.toUpperCase()
+      || 'Online',
+
+    className: 'online',
+  }
 }
 
 
 export default function HistoryPage() {
 
+  const [
+    searchParams,
+    setSearchParams,
+  ] = useSearchParams()
+
+
   const {
     printers,
+    loading: printersLoading,
   } = usePrinters()
+
+
+  const queryDeviceId =
+    searchParams.get(
+      'device_id'
+    ) || ''
 
 
   const [
     deviceId,
     setDeviceId,
-  ] = useState('')
+  ] = useState(
+    queryDeviceId
+  )
 
 
   const [
@@ -72,13 +139,74 @@ export default function HistoryPage() {
   ] = useState('')
 
 
+  /*
+   * If History is opened directly,
+   * automatically choose the first
+   * available printer.
+   */
+  useEffect(() => {
+
+    if (
+      deviceId
+      || printers.length === 0
+    ) {
+      return
+    }
+
+    const firstPrinter =
+      printers[0]
+
+    setDeviceId(
+      firstPrinter.device_id
+    )
+
+    setSearchParams({
+      device_id:
+        firstPrinter.device_id,
+    })
+
+  }, [
+    printers,
+    deviceId,
+    setSearchParams,
+  ])
+
+
+  /*
+   * Handle direct navigation such as:
+   *
+   * /history?device_id=demo-printer-002
+   */
+  useEffect(() => {
+
+    if (
+      queryDeviceId
+      && queryDeviceId !== deviceId
+    ) {
+      setDeviceId(
+        queryDeviceId
+      )
+    }
+
+  }, [
+    queryDeviceId,
+    deviceId,
+  ])
+
+
   const filters = useMemo(
     () => ({
       deviceId,
+
       fromTime:
-        toIsoLocal(fromTime),
+        toIsoLocal(
+          fromTime
+        ),
+
       toTime:
-        toIsoLocal(toTime),
+        toIsoLocal(
+          toTime
+        ),
     }),
     [
       deviceId,
@@ -93,18 +221,28 @@ export default function HistoryPage() {
     loading,
     error,
     refresh,
-  } = useHistory(filters)
+  } = useHistory(
+    filters
+  )
 
 
   const selectedPrinter =
     printers.find(
       printer =>
-        printer.device_id === deviceId
+        printer.device_id
+        === deviceId
     ) || null
 
 
   const latest =
-    measurements[0] || null
+    measurements[0]
+    || null
+
+
+  const status =
+    printerStatus(
+      selectedPrinter
+    )
 
 
   const hasInkPercentage =
@@ -132,25 +270,110 @@ export default function HistoryPage() {
       === 'hitachi_modbus'
 
 
+  function changePrinter(
+    nextDeviceId
+  ) {
+    setDeviceId(
+      nextDeviceId
+    )
+
+    setFromTime('')
+    setToTime('')
+
+    if (nextDeviceId) {
+      setSearchParams({
+        device_id:
+          nextDeviceId,
+      })
+    }
+  }
+
+
+  function clearDateFilters() {
+    setFromTime('')
+    setToTime('')
+  }
+
+
+  if (printersLoading) {
+    return (
+      <div className="loading-panel">
+        Loading printers...
+      </div>
+    )
+  }
+
+
+  if (
+    !printersLoading
+    && printers.length === 0
+  ) {
+    return (
+      <div className="page">
+
+        <div className="page-heading">
+          <div>
+            <h1>History</h1>
+
+            <p>
+              Historical printer
+              measurements and trends
+            </p>
+          </div>
+        </div>
+
+        <div className="empty-state">
+          No printers are available.
+        </div>
+
+      </div>
+    )
+  }
+
+
   return (
     <div className="page">
 
       <div className="page-heading">
 
         <div>
+
+          <span
+            style={{
+              display: 'block',
+              marginBottom: '5px',
+              color: '#1595a3',
+              fontSize: '11px',
+              fontWeight: 800,
+              textTransform:
+                'uppercase',
+              letterSpacing:
+                '0.8px',
+            }}
+          >
+            Printer History
+          </span>
+
           <h1>
-            History
+            {
+              selectedPrinter
+                ?.display_name
+              || 'History'
+            }
           </h1>
 
           <p>
-            Historical printer
-            measurements and trends
+            Historical measurements
+            for one selected printer.
           </p>
+
         </div>
+
 
         <button
           className="secondary-button"
           onClick={refresh}
+          disabled={!deviceId}
         >
           Refresh
         </button>
@@ -163,6 +386,163 @@ export default function HistoryPage() {
           {error}
         </div>
       )}
+
+
+      {
+        selectedPrinter
+        && (
+          <section
+            className="panel"
+            style={{
+              marginBottom: '20px',
+            }}
+          >
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent:
+                  'space-between',
+                alignItems:
+                  'flex-start',
+                gap: '20px',
+                padding:
+                  '20px 22px',
+                borderBottom:
+                  '1px solid #e7ebee',
+              }}
+            >
+
+              <div>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: '20px',
+                  }}
+                >
+                  {
+                    selectedPrinter
+                      .display_name
+                    || selectedPrinter
+                      .model_name
+                    || 'Printer'
+                  }
+                </h2>
+
+
+                <div
+                  style={{
+                    marginTop: '5px',
+                    color: '#75818a',
+                    fontSize: '13px',
+                  }}
+                >
+                  {
+                    selectedPrinter
+                      .model_name
+                    || 'Unknown model'
+                  }
+
+                  {
+                    selectedPrinter
+                      .serial_number
+                    && (
+                      <>
+                        {' · Serial '}
+                        {
+                          selectedPrinter
+                            .serial_number
+                        }
+                      </>
+                    )
+                  }
+
+                  {
+                    selectedPrinter
+                      .location
+                    && (
+                      <>
+                        {' · '}
+                        {
+                          selectedPrinter
+                            .location
+                        }
+                      </>
+                    )
+                  }
+                </div>
+
+
+                <div
+                  style={{
+                    marginTop: '7px',
+                    color: '#8a959d',
+                    fontFamily:
+                      'monospace',
+                    fontSize: '11px',
+                  }}
+                >
+                  {
+                    selectedPrinter
+                      .device_id
+                  }
+                </div>
+
+              </div>
+
+
+              <span
+                className={
+                  `fleet-status ${status.className}`
+                }
+              >
+                {status.label}
+              </span>
+
+            </div>
+
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                flexWrap: 'wrap',
+                padding:
+                  '12px 20px',
+              }}
+            >
+
+              <Link
+                className="secondary-button"
+                to={
+                  `/printers/${encodeURIComponent(
+                    selectedPrinter
+                      .device_id
+                  )}`
+                }
+              >
+                Printer Details
+              </Link>
+
+
+              <Link
+                className="secondary-button"
+                to={
+                  `/alerts?device_id=${encodeURIComponent(
+                    selectedPrinter
+                      .device_id
+                  )}`
+                }
+              >
+                Alerts
+              </Link>
+
+            </div>
+
+          </section>
+        )
+      }
 
 
       <section className="panel">
@@ -179,36 +559,46 @@ export default function HistoryPage() {
               value={deviceId}
               onChange={
                 event =>
-                  setDeviceId(
+                  changePrinter(
                     event.target.value
                   )
               }
             >
 
-              <option value="">
-                All printers
-              </option>
+              {
+                printers.map(
+                  printer => (
 
-              {printers.map(
-                printer => (
+                    <option
+                      key={
+                        printer.device_id
+                      }
+                      value={
+                        printer.device_id
+                      }
+                    >
+                      {
+                        printer.display_name
+                        || printer.model_name
+                        || printer.device_id
+                      }
+                      {
+                        printer.model_name
+                        && (
+                          ` — ${printer.model_name}`
+                        )
+                      }
+                      {
+                        printer.serial_number
+                        && (
+                          ` — S/N ${printer.serial_number}`
+                        )
+                      }
+                    </option>
 
-                  <option
-                    key={
-                      printer.device_id
-                    }
-                    value={
-                      printer.device_id
-                    }
-                  >
-                    {
-                      printer.model_name
-                        ? `${printer.model_name} — ${printer.device_id}`
-                        : printer.device_id
-                    }
-                  </option>
-
+                  )
                 )
-              )}
+              }
 
             </select>
 
@@ -257,13 +647,11 @@ export default function HistoryPage() {
 
           <button
             className="clear-filter-button"
-            onClick={() => {
-              setDeviceId('')
-              setFromTime('')
-              setToTime('')
-            }}
+            onClick={
+              clearDateFilters
+            }
           >
-            Clear filters
+            Clear dates
           </button>
 
         </div>
@@ -294,8 +682,9 @@ export default function HistoryPage() {
 
           <strong>
             {
-              latest?.print_count
-              ?? '-'
+              latest
+                ?.print_count
+              ?? '—'
             }
           </strong>
 
@@ -317,33 +706,28 @@ export default function HistoryPage() {
                   ' '
                 )
                 ?.toUpperCase()
-              ?? '-'
+              ?? '—'
             }
           </strong>
 
         </div>
 
 
-        {
-          isRealHitachi
-          && (
-            <div className="summary-card">
+        <div className="summary-card">
 
-              <span>
-                Serial Number
-              </span>
+          <span>
+            Serial Number
+          </span>
 
-              <strong>
-                {
-                  selectedPrinter
-                    ?.serial_number
-                  ?? '-'
-                }
-              </strong>
+          <strong>
+            {
+              selectedPrinter
+                ?.serial_number
+              ?? '—'
+            }
+          </strong>
 
-            </div>
-          )
-        }
+        </div>
 
 
         {
@@ -398,72 +782,114 @@ export default function HistoryPage() {
       </div>
 
 
-      {loading ? (
+      {
+        loading
+        ? (
+          <div className="loading-panel">
+            Loading history...
+          </div>
+        )
 
-        <div className="loading-panel">
-          Loading history...
-        </div>
+        : measurements.length === 0
+        ? (
+          <div className="empty-state">
+            No measurements found for
+            this printer in the selected
+            time range.
+          </div>
+        )
 
-      ) : (
-
-        <div className="history-grid">
-
-          <HistoryLineChart
-            title="Ambient Temperature"
-            subtitle="Printer-reported ambient temperature over time"
-            data={measurements}
-            dataKey="temperature_c"
-            unit=" °C"
-          />
-
-
-          <HistoryLineChart
-            title="Ink Pressure"
-            subtitle="Printer-reported ink pressure over time"
-            data={measurements}
-            dataKey="pressure_mpa"
-            unit=" MPa"
-          />
+        : (
+          <div className="history-grid">
 
 
-          <HistoryLineChart
-            title="Print Count"
-            subtitle="Cumulative printer production counter"
-            data={measurements}
-            dataKey="print_count"
-          />
+            <HistoryLineChart
+              title="Ambient Temperature"
+              subtitle={
+                `${
+                  selectedPrinter
+                    ?.display_name
+                  || 'Selected printer'
+                } — printer-reported ambient temperature`
+              }
+              data={measurements}
+              dataKey="temperature_c"
+              unit=" °C"
+            />
 
 
-          {
-            hasInkPercentage
-            && (
-              <HistoryLineChart
-                title="Ink Level"
-                subtitle="Ink percentage over time"
-                data={measurements}
-                dataKey="ink_level_percent"
-                unit="%"
-              />
-            )
-          }
+            <HistoryLineChart
+              title="Ink Pressure"
+              subtitle={
+                `${
+                  selectedPrinter
+                    ?.display_name
+                  || 'Selected printer'
+                } — printer-reported ink pressure`
+              }
+              data={measurements}
+              dataKey="pressure_mpa"
+              unit=" MPa"
+            />
 
 
-          {
-            hasMakeupPercentage
-            && (
-              <HistoryLineChart
-                title="Makeup Level"
-                subtitle="Makeup percentage over time"
-                data={measurements}
-                dataKey="makeup_level_percent"
-                unit="%"
-              />
-            )
-          }
+            <HistoryLineChart
+              title="Print Count"
+              subtitle={
+                `${
+                  selectedPrinter
+                    ?.display_name
+                  || 'Selected printer'
+                } — cumulative production count`
+              }
+              data={measurements}
+              dataKey="print_count"
+              unit=""
+            />
 
-        </div>
 
-      )}
+            {
+              hasInkPercentage
+              && (
+                <HistoryLineChart
+                  title="Ink Level"
+                  subtitle={
+                    `${
+                      selectedPrinter
+                        ?.display_name
+                      || 'Selected printer'
+                    } — ink level over time`
+                  }
+                  data={measurements}
+                  dataKey="ink_level_percent"
+                  unit="%"
+                />
+              )
+            }
+
+
+            {
+              hasMakeupPercentage
+              && (
+                <HistoryLineChart
+                  title="Makeup Level"
+                  subtitle={
+                    `${
+                      selectedPrinter
+                        ?.display_name
+                      || 'Selected printer'
+                    } — makeup level over time`
+                  }
+                  data={measurements}
+                  dataKey="makeup_level_percent"
+                  unit="%"
+                />
+              )
+            }
+
+          </div>
+        )
+      }
 
     </div>
   )

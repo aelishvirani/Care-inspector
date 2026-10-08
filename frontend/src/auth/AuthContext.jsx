@@ -98,16 +98,28 @@ export function AuthProvider({
   }
 
 
-  function logout() {
-    localStorage.removeItem(
-      'care_inspector_token'
-    )
+  async function logout() {
+    try {
+      await apiPost(
+        '/auth/logout',
+        {}
+      )
+    } catch (error) {
+      console.error(
+        'Logout request failed',
+        error
+      )
+    } finally {
+      localStorage.removeItem(
+        'care_inspector_token'
+      )
 
-    localStorage.removeItem(
-      'care_inspector_user'
-    )
+      localStorage.removeItem(
+        'care_inspector_user'
+      )
 
-    setUser(null)
+      setUser(null)
+    }
   }
 
 

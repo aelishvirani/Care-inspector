@@ -6,12 +6,21 @@ from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
+    Request,
     WebSocket,
     WebSocketDisconnect,
 )
 
 from pydantic import BaseModel
 from sqlalchemy import desc, select
+
+from .audit import (
+    log_audit,
+    write_audit_event,
+)
+from .audit_middleware import (
+    AuditMiddleware,
+)
 
 from .alerts import evaluate_measurement, set_alert
 from .database import Base, SessionLocal, engine
@@ -155,6 +164,16 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         get_configuration(db)
 
+    write_audit_event(
+        actor_email="SYSTEM",
+        actor_role="SYSTEM",
+        category="SYSTEM",
+        action="SYSTEM_START",
+        outcome="SUCCESS",
+        object_type="backend",
+        object_id="care-inspector-api",
+    )
+
     monitor_task = asyncio.create_task(
         offline_monitor()
     )
@@ -169,10 +188,26 @@ async def lifespan(app: FastAPI):
         pass
 
 
+    write_audit_event(
+        actor_email="SYSTEM",
+        actor_role="SYSTEM",
+        category="SYSTEM",
+        action="SYSTEM_STOP",
+        outcome="SUCCESS",
+        object_type="backend",
+        object_id="care-inspector-api",
+    )
+
+
 app = FastAPI(
     title="Care-Inspector API",
     version="0.3.0",
     lifespan=lifespan,
+)
+
+
+app.add_middleware(
+    AuditMiddleware
 )
 
 
@@ -694,6 +729,21 @@ async def collector_websocket(
 ):
     await websocket.accept()
 
+    write_audit_event(
+        actor_email="SYSTEM",
+        actor_role="SYSTEM",
+        category="COLLECTOR",
+        action="COLLECTOR_CONNECTED",
+        outcome="SUCCESS",
+        object_type="device",
+        object_id=device_id,
+        ip_address=(
+            websocket.client.host
+            if websocket.client
+            else None
+        ),
+    )
+
     print(
         f"Collector connected: "
         f"{device_id}"
@@ -968,12 +1018,33 @@ async def collector_websocket(
             )
 
     except WebSocketDisconnect:
+        write_audit_event(
+            actor_email="SYSTEM",
+            actor_role="SYSTEM",
+            category="COLLECTOR",
+            action="COLLECTOR_DISCONNECTED",
+            outcome="SUCCESS",
+            object_type="device",
+            object_id=device_id,
+        )
+
         print(
             f"Collector disconnected: "
             f"{device_id}"
         )
 
     except Exception as exc:
+        write_audit_event(
+            actor_email="SYSTEM",
+            actor_role="SYSTEM",
+            category="COLLECTOR",
+            action="COLLECTOR_ERROR",
+            outcome="FAILURE",
+            object_type="device",
+            object_id=device_id,
+            error_message=str(exc),
+        )
+
         print(
             f"Collector WebSocket error "
             f"for {device_id}: {exc}"
@@ -993,12 +1064,18 @@ async def collector_websocket(
 @app.post("/api/auth/login")
 async def login(
     request: LoginRequest,
+    http_request: Request,
 ):
-    with SessionLocal() as db:
+    email = (
+        request.email
+        .strip()
+        .lower()
+    )
 
+    with SessionLocal() as db:
         user = db.scalar(
             select(User).where(
-                User.email == request.email
+                User.email == email
             )
         )
 
@@ -1010,16 +1087,56 @@ async def login(
                 user.password_hash,
             )
         ):
+            log_audit(
+                db,
+                user=user,
+                actor_email=email,
+                actor_role=(
+                    user.role
+                    if user
+                    else "ANONYMOUS"
+                ),
+                category="AUTH",
+                action="LOGIN_FAILED",
+                outcome="FAILURE",
+                object_type="user",
+                object_id=(
+                    user.id
+                    if user
+                    else None
+                ),
+                request=http_request,
+                status_code=401,
+                details=(
+                    "Invalid credentials "
+                    "or inactive account"
+                ),
+            )
+
+            db.commit()
+
             raise HTTPException(
                 status_code=401,
-                detail=(
-                    "Invalid email or password"
-                ),
+                detail="Invalid email or password",
             )
 
         token = create_access_token(
             user
         )
+
+        log_audit(
+            db,
+            user=user,
+            category="AUTH",
+            action="LOGIN_SUCCESS",
+            outcome="SUCCESS",
+            object_type="user",
+            object_id=user.id,
+            request=http_request,
+            status_code=200,
+        )
+
+        db.commit()
 
         return {
             "access_token": token,
@@ -1048,6 +1165,33 @@ async def auth_me(
         "customer_id": (
             user.customer_id
         ),
+    }
+
+
+@app.post("/api/auth/logout")
+async def logout(
+    http_request: Request,
+    user: User = Depends(
+        get_current_user
+    ),
+):
+    with SessionLocal() as db:
+        log_audit(
+            db,
+            user=user,
+            category="AUTH",
+            action="LOGOUT",
+            outcome="SUCCESS",
+            object_type="user",
+            object_id=user.id,
+            request=http_request,
+            status_code=200,
+        )
+
+        db.commit()
+
+    return {
+        "status": "ok",
     }
 
 

@@ -483,42 +483,6 @@ async def register_device(
             ),
         )
 
-        new_customer_id = (
-            device.customer_id
-        )
-
-        if (
-            old_customer_id is None
-            and new_customer_id
-            is not None
-        ):
-            action = "DEVICE_ASSIGNED"
-
-        elif (
-            old_customer_id
-            is not None
-            and new_customer_id
-            is None
-        ):
-            action = "DEVICE_UNASSIGNED"
-
-        else:
-            action = "DEVICE_UPDATED"
-
-        log_audit(
-            db,
-            user=user,
-            action=action,
-            object_type="device",
-            object_id=device.device_id,
-            details=(
-                f"customer_id: "
-                f"{old_customer_id} "
-                f"-> "
-                f"{new_customer_id}"
-            ),
-        )
-
         db.commit()
         db.refresh(device)
 
@@ -584,6 +548,49 @@ async def update_device(
                 field,
                 value,
             )
+
+        new_customer_id = (
+            device.customer_id
+        )
+
+        if (
+            old_customer_id is None
+            and new_customer_id
+            is not None
+        ):
+            action = "DEVICE_ASSIGNED"
+
+        elif (
+            old_customer_id
+            is not None
+            and new_customer_id
+            is None
+        ):
+            action = "DEVICE_UNASSIGNED"
+
+        else:
+            action = "DEVICE_UPDATED"
+
+        log_audit(
+            db,
+            user=user,
+            category="DEVICE",
+            action=action,
+            outcome="SUCCESS",
+            object_type="device",
+            object_id=device.device_id,
+            details=(
+                "Printer management change"
+            ),
+            old_value=(
+                f"customer_id="
+                f"{old_customer_id}"
+            ),
+            new_value=(
+                f"customer_id="
+                f"{new_customer_id}"
+            ),
+        )
 
         db.commit()
         db.refresh(device)

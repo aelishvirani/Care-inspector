@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
+from .audit import log_audit
 from .models import Alert
 
 
@@ -28,16 +29,33 @@ def set_alert(
 
     if active:
         if existing is None:
-            db.add(
-                Alert(
-                    device_id=device_id,
-                    alert_type=alert_type,
-                    severity=severity,
-                    message=message,
-                    active=True,
-                    created_at=utc_now(),
-                    resolved_at=None,
-                )
+            alert = Alert(
+                device_id=device_id,
+                alert_type=alert_type,
+                severity=severity,
+                message=message,
+                active=True,
+                created_at=utc_now(),
+                resolved_at=None,
+            )
+
+            db.add(alert)
+            db.flush()
+
+            log_audit(
+                db,
+                actor_email="SYSTEM",
+                actor_role="SYSTEM",
+                category="ALERT",
+                action="ALERT_CREATED",
+                outcome="SUCCESS",
+                object_type="alert",
+                object_id=alert.id,
+                details=(
+                    f"{alert_type} for "
+                    f"{device_id}: "
+                    f"{message}"
+                ),
             )
         else:
             existing.message = message
@@ -47,6 +65,21 @@ def set_alert(
         if existing is not None:
             existing.active = False
             existing.resolved_at = utc_now()
+
+            log_audit(
+                db,
+                actor_email="SYSTEM",
+                actor_role="SYSTEM",
+                category="ALERT",
+                action="ALERT_RESOLVED",
+                outcome="SUCCESS",
+                object_type="alert",
+                object_id=existing.id,
+                details=(
+                    f"{alert_type} for "
+                    f"{device_id}"
+                ),
+            )
 
 
 def _optional_float(value):

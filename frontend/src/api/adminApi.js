@@ -99,9 +99,38 @@ export function updateAdminUser(
 }
 
 
-export function getAuditLog() {
+export function getAuditLog(
+  filters = {}
+) {
+  const params =
+    new URLSearchParams()
+
+  Object.entries(
+    filters
+  ).forEach(
+    ([key, value]) => {
+      if (
+        value !== ''
+        && value !== null
+        && value !== undefined
+      ) {
+        params.set(
+          key,
+          value
+        )
+      }
+    }
+  )
+
+  const query =
+    params.toString()
+
   return apiGet(
-    '/secure/admin/audit-log'
+    `/secure/admin/audit-log${
+      query
+        ? `?${query}`
+        : ''
+    }`
   )
 }
 

@@ -476,7 +476,11 @@ async def update_user(
 
 @router.get("/audit-log")
 async def audit_log(
-    limit: int = 250,
+    limit: int = 500,
+    category: str | None = None,
+    outcome: str | None = None,
+    action: str | None = None,
+    actor_email: str | None = None,
     user: User = Depends(
         get_current_user
     ),
@@ -485,12 +489,40 @@ async def audit_log(
 
     limit = max(
         1,
-        min(limit, 1000),
+        min(limit, 2000),
     )
 
     with SessionLocal() as db:
+        query = select(
+            AuditLog
+        )
+
+        if category:
+            query = query.where(
+                AuditLog.category
+                == category
+            )
+
+        if outcome:
+            query = query.where(
+                AuditLog.outcome
+                == outcome
+            )
+
+        if action:
+            query = query.where(
+                AuditLog.action
+                == action
+            )
+
+        if actor_email:
+            query = query.where(
+                AuditLog.actor_email
+                == actor_email
+            )
+
         rows = db.scalars(
-            select(AuditLog)
+            query
             .order_by(
                 AuditLog.created_at.desc()
             )
@@ -499,21 +531,57 @@ async def audit_log(
 
         return [
             {
-                "id": row.id,
+                "id":
+                    row.id,
+
                 "actor_user_id":
                     row.actor_user_id,
+
                 "actor_email":
                     row.actor_email,
+
                 "actor_role":
                     row.actor_role,
+
+                "category":
+                    row.category,
+
                 "action":
                     row.action,
+
+                "outcome":
+                    row.outcome,
+
                 "object_type":
                     row.object_type,
+
                 "object_id":
                     row.object_id,
+
+                "method":
+                    row.method,
+
+                "path":
+                    row.path,
+
+                "status_code":
+                    row.status_code,
+
+                "ip_address":
+                    row.ip_address,
+
                 "details":
                     row.details,
+
+                "old_value":
+                    row.old_value,
+
+                "new_value":
+                    row.new_value,
+
+                "error_message":
+                    row.error_message,
+
                 "created_at":
                     row.created_at.isoformat(),
             }

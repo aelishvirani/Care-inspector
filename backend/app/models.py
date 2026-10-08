@@ -335,9 +335,21 @@ class AuditLog(Base):
         index=True,
     )
 
+    category: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+
     action: Mapped[str] = mapped_column(
         String,
         nullable=False,
+        index=True,
+    )
+
+    outcome: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
         index=True,
     )
 
@@ -351,7 +363,43 @@ class AuditLog(Base):
         nullable=True,
     )
 
+    method: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    path: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+
+    status_code: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    ip_address: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
     details: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    old_value: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    new_value: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
         String,
         nullable=True,
     )

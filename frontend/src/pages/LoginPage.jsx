@@ -11,6 +11,23 @@ import {
   useAuth,
 } from '../auth/AuthContext'
 
+import MfgLogo from '../components/branding/MfgLogo'
+
+import '../styles/login.css'
+
+
+function roleHome(user) {
+  if (user?.role === 'ADMIN') {
+    return '/admin'
+  }
+
+  if (user?.role === 'TECHNICIAN') {
+    return '/technik'
+  }
+
+  return '/customer'
+}
+
 
 export default function LoginPage() {
   const {
@@ -21,27 +38,31 @@ export default function LoginPage() {
   const navigate =
     useNavigate()
 
-  const [email, setEmail] =
-    useState('')
+  const [
+    email,
+    setEmail,
+  ] = useState('')
 
-  const [password, setPassword] =
-    useState('')
+  const [
+    password,
+    setPassword,
+  ] = useState('')
 
-  const [error, setError] =
-    useState('')
+  const [
+    error,
+    setError,
+  ] = useState('')
 
-  const [loading, setLoading] =
-    useState(false)
+  const [
+    loading,
+    setLoading,
+  ] = useState(false)
 
 
   if (user) {
     return (
       <Navigate
-        to={
-          user.role === 'TECHNICIAN'
-            ? '/technik'
-            : '/customer'
-        }
+        to={roleHome(user)}
         replace
       />
     )
@@ -59,33 +80,20 @@ export default function LoginPage() {
     try {
       const loggedInUser =
         await login(
-          email,
+          email.trim(),
           password
         )
 
-      if (
-        loggedInUser.role
-        === 'TECHNICIAN'
-      ) {
-        navigate(
-          '/technik',
-          {
-            replace: true,
-          }
-        )
-
-      } else {
-        navigate(
-          '/customer',
-          {
-            replace: true,
-          }
-        )
-      }
+      navigate(
+        roleHome(
+          loggedInUser
+        ),
+        {
+          replace: true,
+        }
+      )
 
     } catch (err) {
-      console.error(err)
-
       setError(
         err.message
         || 'Login failed'
@@ -98,125 +106,179 @@ export default function LoginPage() {
 
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent:
-          'center',
-        background: '#f4f6f8',
-        padding: '24px',
-      }}
-    >
+    <div className="login-page">
 
-      <section
-        className="panel"
-        style={{
-          width: '100%',
-          maxWidth: '430px',
-        }}
-      >
+      <div className="login-shell">
 
-        <div
-          style={{
-            marginBottom: '28px',
-          }}
-        >
-          <h1>
-            CARE-INSPECTOR
-          </h1>
+        <section className="login-brand-panel">
 
-          <p>
-            Industrial Printer
-            Monitoring
-          </p>
-        </div>
+          <div className="login-company-logo-wrap">
 
-
-        {error && (
-          <div className="error-banner">
-            {error}
-          </div>
-        )}
-
-
-        <form
-          onSubmit={
-            handleSubmit
-          }
-        >
-
-          <div
-            className="filter-group"
-            style={{
-              marginBottom: '18px',
-            }}
-          >
-            <label>
-              Email
-            </label>
-
-            <input
-              type="email"
-              value={email}
-              required
-              autoComplete="username"
-              onChange={
-                event =>
-                  setEmail(
-                    event.target.value
-                  )
-              }
+            <MfgLogo
+              className="login-company-logo"
             />
+
           </div>
 
 
-          <div
-            className="filter-group"
-            style={{
-              marginBottom: '24px',
-            }}
-          >
-            <label>
-              Password
-            </label>
+          <div className="login-product-copy">
 
-            <input
-              type="password"
-              value={password}
-              required
-              autoComplete={
-                'current-password'
-              }
-              onChange={
-                event =>
-                  setPassword(
-                    event.target.value
-                  )
-              }
-            />
+            <span className="login-eyebrow">
+              Industrial Monitoring Platform
+            </span>
+
+            <h1>
+              Care-Inspector
+            </h1>
+
+            <p>
+              Central monitoring for
+              industrial printers,
+              alerts and service
+              operations.
+            </p>
+
           </div>
 
 
-          <button
-            className="secondary-button"
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-            }}
-          >
-            {
-              loading
-                ? 'Signing in...'
-                : 'Sign in'
-            }
-          </button>
+          <div className="login-brand-footer">
+            MFG Technik &amp; Service
+          </div>
 
-        </form>
+        </section>
 
-      </section>
+
+        <section className="login-form-panel">
+
+          <div className="login-form-content">
+
+            <div className="login-mobile-logo">
+              <MfgLogo
+                className="login-company-logo"
+              />
+            </div>
+
+
+            <div className="login-heading">
+
+              <span>
+                CARE-INSPECTOR
+              </span>
+
+              <h2>
+                Welcome back
+              </h2>
+
+              <p>
+                Sign in to access your
+                monitoring dashboard.
+              </p>
+
+            </div>
+
+
+            {error && (
+              <div className="login-error">
+                <strong>
+                  Sign in failed
+                </strong>
+
+                <span>
+                  {error}
+                </span>
+              </div>
+            )}
+
+
+            <form
+              className="login-form"
+              onSubmit={handleSubmit}
+            >
+
+              <label
+                className="login-field"
+              >
+                <span>
+                  Email address
+                </span>
+
+                <input
+                  type="email"
+                  value={email}
+                  required
+                  autoFocus
+                  autoComplete="username"
+                  placeholder="name@company.com"
+                  onChange={
+                    event =>
+                      setEmail(
+                        event.target.value
+                      )
+                  }
+                />
+              </label>
+
+
+              <label
+                className="login-field"
+              >
+                <span>
+                  Password
+                </span>
+
+                <input
+                  type="password"
+                  value={password}
+                  required
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  onChange={
+                    event =>
+                      setPassword(
+                        event.target.value
+                      )
+                  }
+                />
+              </label>
+
+
+              <button
+                className="login-submit"
+                type="submit"
+                disabled={loading}
+              >
+                {
+                  loading
+                    ? 'Signing in...'
+                    : 'Sign in'
+                }
+              </button>
+
+            </form>
+
+
+            <div className="login-security-note">
+
+              <span className="login-security-dot" />
+
+              Authorized access only.
+              Activities may be recorded
+              in the system audit log.
+
+            </div>
+
+          </div>
+
+
+          <div className="login-version">
+            Care-Inspector
+            {' · '}
+            MFG Technik &amp; Service
+          </div>
+
+        </section>
+
+      </div>
 
     </div>
   )

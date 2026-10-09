@@ -11,6 +11,7 @@ import {
 
 import Sidebar from './Sidebar'
 
+
 import {
   useAuth,
 } from '../../auth/AuthContext'
@@ -134,19 +135,22 @@ export default function AppLayout() {
 
         <header className="app-topbar">
 
-          <div>
+          <div className="topbar-product">
+
             <strong>
               Care-Inspector
             </strong>
 
             <span>
               {
-                user?.role
-                  === 'TECHNICIAN'
-                  ? 'Technik / Service Panel'
-                  : 'Customer Monitoring'
+                user?.role === 'ADMIN'
+                  ? 'System Administration'
+                  : user?.role === 'TECHNICIAN'
+                    ? 'Technik / Service Panel'
+                    : 'Customer Monitoring'
               }
             </span>
+
           </div>
 
 

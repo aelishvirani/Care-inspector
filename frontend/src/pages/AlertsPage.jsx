@@ -18,32 +18,64 @@ import {
   usePrinters,
 } from '../hooks/usePrinters'
 
+import '../styles/alert-filters.css'
+
+
+const FILTERS = [
+  {
+    id: 'all',
+    label: 'All',
+    status: '',
+    severity: '',
+  },
+  {
+    id: 'active',
+    label: 'Active',
+    status: 'active',
+    severity: '',
+  },
+  {
+    id: 'acknowledged',
+    label: 'Acknowledged',
+    status: 'acknowledged',
+    severity: '',
+  },
+  {
+    id: 'resolved',
+    label: 'Resolved',
+    status: 'resolved',
+    severity: '',
+  },
+  {
+    id: 'warning',
+    label: 'Warning',
+    status: '',
+    severity: 'warning',
+  },
+  {
+    id: 'critical',
+    label: 'Critical',
+    status: '',
+    severity: 'critical',
+  },
+]
+
 
 export default function AlertsPage() {
-
   const [
     searchParams,
     setSearchParams,
   ] = useSearchParams()
-
 
   const initialDevice =
     searchParams.get(
       'device_id'
     ) || ''
 
-
   const [
-    status,
-    setStatus,
-  ] = useState('')
-
-
-  const [
-    severity,
-    setSeverity,
-  ] = useState('')
-
+    selectedFilter,
+    setSelectedFilter,
+  ] = useState('all')
 
   const [
     deviceId,
@@ -52,11 +84,18 @@ export default function AlertsPage() {
     initialDevice
   )
 
-
   const [
     search,
     setSearch,
   ] = useState('')
+
+
+  const activeFilter =
+    FILTERS.find(
+      filter =>
+        filter.id
+        === selectedFilter
+    ) || FILTERS[0]
 
 
   const {
@@ -70,8 +109,12 @@ export default function AlertsPage() {
     error,
     refresh,
   } = useAlerts({
-    status,
-    severity,
+    status:
+      activeFilter.status,
+
+    severity:
+      activeFilter.severity,
+
     deviceId,
   })
 
@@ -124,7 +167,7 @@ export default function AlertsPage() {
     filteredAlerts.filter(
       alert =>
         alert.severity
-          === 'critical'
+        === 'critical'
     ).length
 
 
@@ -150,7 +193,7 @@ export default function AlertsPage() {
 
         <div>
           <h1>
-            Alerts & Problems
+            Alerts &amp; Problems
           </h1>
 
           <p>
@@ -184,9 +227,7 @@ export default function AlertsPage() {
           </span>
 
           <strong>
-            {
-              filteredAlerts.length
-            }
+            {filteredAlerts.length}
           </strong>
         </div>
 
@@ -217,18 +258,15 @@ export default function AlertsPage() {
 
       <section className="panel">
 
-        <div className="filter-toolbar">
+        <div className="alert-controls">
 
-          <div className="filter-group">
-
-            <label>
-              Search
-            </label>
+          <div className="alert-search-row">
 
             <input
+              className="alert-search-input"
               type="search"
               placeholder={
-                'Problem, printer, message...'
+                'Search problem, printer or message...'
               }
               value={search}
               onChange={
@@ -239,82 +277,9 @@ export default function AlertsPage() {
               }
             />
 
-          </div>
-
-
-          <div className="filter-group">
-
-            <label>
-              Status
-            </label>
 
             <select
-              value={status}
-              onChange={
-                event =>
-                  setStatus(
-                    event.target.value
-                  )
-              }
-            >
-              <option value="">
-                All
-              </option>
-
-              <option value="active">
-                Active
-              </option>
-
-              <option value="acknowledged">
-                Acknowledged
-              </option>
-
-              <option value="resolved">
-                Resolved
-              </option>
-            </select>
-
-          </div>
-
-
-          <div className="filter-group">
-
-            <label>
-              Severity
-            </label>
-
-            <select
-              value={severity}
-              onChange={
-                event =>
-                  setSeverity(
-                    event.target.value
-                  )
-              }
-            >
-              <option value="">
-                All
-              </option>
-
-              <option value="warning">
-                Warning
-              </option>
-
-              <option value="critical">
-                Critical
-              </option>
-            </select>
-
-          </div>
-
-
-          <div className="filter-group">
-
-            <label>
-              Printer
-            </label>
-
-            <select
+              className="alert-printer-select"
               value={deviceId}
               onChange={
                 event =>
@@ -331,7 +296,6 @@ export default function AlertsPage() {
               {
                 printers.map(
                   printer => (
-
                     <option
                       key={
                         printer.device_id
@@ -344,8 +308,12 @@ export default function AlertsPage() {
                         printer.display_name
                         || printer.device_id
                       }
+                      {
+                        printer.serial_number
+                          ? ` · SN ${printer.serial_number}`
+                          : ''
+                      }
                     </option>
-
                   )
                 )
               }
@@ -355,39 +323,60 @@ export default function AlertsPage() {
           </div>
 
 
-          <button
-            className="clear-filter-button"
-            onClick={() => {
-              setSearch('')
-              setStatus('')
-              setSeverity('')
-              setDeviceId('')
-              setSearchParams({})
-            }}
-          >
-            Clear filters
-          </button>
+          <div className="alert-filter-row">
+
+            {
+              FILTERS.map(
+                filter => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    className={
+                      [
+                        'alert-filter-button',
+                        filter.id,
+                        selectedFilter
+                          === filter.id
+                          ? 'selected'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')
+                    }
+                    onClick={() =>
+                      setSelectedFilter(
+                        filter.id
+                      )
+                    }
+                  >
+                    {filter.label}
+                  </button>
+                )
+              )
+            }
+
+          </div>
 
         </div>
 
 
         {
           loading
-          ? (
-            <div className="loading-panel">
-              Loading alerts...
-            </div>
-          )
-          : (
-            <AlertTable
-              alerts={
-                filteredAlerts
-              }
-              onAcknowledged={
-                refresh
-              }
-            />
-          )
+            ? (
+              <div className="loading-panel">
+                Loading alerts...
+              </div>
+            )
+            : (
+              <AlertTable
+                alerts={
+                  filteredAlerts
+                }
+                onAcknowledged={
+                  refresh
+                }
+              />
+            )
         }
 
       </section>

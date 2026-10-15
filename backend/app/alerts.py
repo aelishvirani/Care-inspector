@@ -3,7 +3,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from .audit import log_audit
-from .models import Alert
+from .models import (
+    Alert,
+    DeviceConfiguration,
+)
 
 
 def utc_now():
@@ -109,6 +112,17 @@ def evaluate_measurement(
 ):
     device_id = str(data["device_id"])
 
+    device_config = db.get(
+        DeviceConfiguration,
+        device_id,
+    )
+
+    effective_config = (
+        device_config
+        if device_config is not None
+        else config
+    )
+
     temperature = _optional_float(
         data.get("temperature_c")
     )
@@ -142,7 +156,7 @@ def evaluate_measurement(
             ),
             active=(
                 temperature
-                > config.temperature_high
+                > effective_config.temperature_high
             ),
         )
 
@@ -162,7 +176,7 @@ def evaluate_measurement(
             ),
             active=(
                 pressure
-                < config.pressure_low
+                < effective_config.pressure_low
             ),
         )
 
@@ -177,7 +191,7 @@ def evaluate_measurement(
             ),
             active=(
                 pressure
-                > config.pressure_high
+                > effective_config.pressure_high
             ),
         )
 
@@ -217,7 +231,7 @@ def evaluate_measurement(
             severity="warning",
             message=f"Ink level low: {ink}%",
             active=(
-                ink < config.ink_low
+                ink < effective_config.ink_low
             ),
         )
 
@@ -232,7 +246,7 @@ def evaluate_measurement(
                 f"{makeup}%"
             ),
             active=(
-                makeup < config.makeup_low
+                makeup < effective_config.makeup_low
             ),
         )
 

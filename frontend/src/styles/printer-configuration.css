@@ -1,0 +1,290 @@
+.printer-config-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.printer-selector-panel {
+  background: #ffffff;
+  border: 1px solid #dce3e7;
+  margin-bottom: 22px;
+}
+
+.printer-selector-heading {
+  padding: 20px 22px 14px;
+}
+
+.config-eyebrow {
+  color: #1595a3;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+}
+
+.printer-selector-heading h2 {
+  margin: 5px 0 0;
+  font-size: 19px;
+}
+
+.printer-selector-heading p {
+  margin: 5px 0 0;
+  color: #7a8790;
+  font-size: 12px;
+}
+
+.printer-selector-row {
+  padding: 18px 22px 22px;
+  border-top: 1px solid #e8edef;
+}
+
+.printer-select-control {
+  max-width: 620px;
+}
+
+.printer-select-control label {
+  display: block;
+  margin-bottom: 7px;
+  color: #64717a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.printer-select-control select {
+  width: 100%;
+  height: 48px;
+  padding: 0 13px;
+  background: #fff;
+  border: 1px solid #bcc9cf;
+  color: #18232b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.selected-printer-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  margin-top: 18px;
+
+  border: 1px solid #e0e6e9;
+  background: #f8fafb;
+}
+
+.selected-printer-summary > div {
+  padding: 14px 16px;
+  border-right: 1px solid #e0e6e9;
+}
+
+.selected-printer-summary > div:last-child {
+  border-right: 0;
+}
+
+.selected-printer-summary span {
+  display: block;
+  margin-bottom: 4px;
+
+  color: #849099;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.selected-printer-summary strong {
+  font-size: 12px;
+}
+
+.config-default-note {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+
+  background: #eef7f8;
+  border-left: 3px solid #1595a3;
+
+  color: #49616a;
+  font-size: 12px;
+}
+
+.printer-config-grid {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, .8fr)
+    minmax(0, 1.2fr);
+
+  gap: 22px;
+}
+
+.config-section-card {
+  background: #ffffff;
+  border: 1px solid #dce3e7;
+}
+
+.config-section-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #e6ecef;
+}
+
+.config-section-header > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.config-section-number {
+  width: 35px;
+  height: 35px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #edf6f7;
+  color: #168d9b;
+
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.config-section-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.config-section-header p {
+  margin: 3px 0 0;
+  color: #849099;
+  font-size: 11px;
+}
+
+.config-fields {
+  padding: 5px 20px 12px;
+}
+
+.config-fields > label {
+  min-height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 25px;
+
+  border-bottom: 1px solid #edf0f2;
+}
+
+.config-fields > label:last-child {
+  border-bottom: 0;
+}
+
+.config-fields > label > span {
+  color: #39464f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.config-fields small {
+  display: block;
+  margin-top: 4px;
+
+  color: #8a959d;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.config-input-unit {
+  width: 145px;
+  height: 39px;
+
+  display: flex;
+  align-items: center;
+
+  border: 1px solid #cbd5da;
+  background: white;
+}
+
+.config-input-unit input {
+  width: 100%;
+  height: 100%;
+
+  padding: 0 9px;
+
+  border: 0;
+  outline: none;
+
+  background: transparent;
+
+  color: #17202a;
+  font-weight: 600;
+}
+
+.config-input-unit > span {
+  min-width: 47px;
+
+  padding-right: 9px;
+
+  color: #869199;
+  font-size: 10px;
+  text-align: right;
+}
+
+.printer-config-actions {
+  margin-top: 22px;
+  padding: 16px 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: white;
+  border: 1px solid #dce3e7;
+}
+
+.printer-config-actions strong {
+  font-size: 12px;
+}
+
+.printer-config-actions span {
+  color: #7d8992;
+  font-size: 11px;
+}
+
+@media (max-width: 1000px) {
+  .printer-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-printer-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .selected-printer-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-printer-summary > div {
+    border-right: 0;
+    border-bottom: 1px solid #e0e6e9;
+  }
+
+  .config-fields > label {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 15px 0;
+    gap: 10px;
+  }
+
+  .config-input-unit {
+    width: 100%;
+  }
+
+  .printer-config-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+}

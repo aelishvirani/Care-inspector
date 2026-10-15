@@ -10,6 +10,9 @@ import {
   usePrinters,
 } from '../hooks/usePrinters'
 
+import PrinterStatusFilter
+  from '../components/filters/PrinterStatusFilter'
+
 
 export default function PrintersPage() {
   const {
@@ -173,18 +176,15 @@ export default function PrintersPage() {
 
       <section className="panel">
 
-        <div className="filter-toolbar">
+        <div className="printer-filter-toolbar">
 
-          <div className="filter-group">
-
-            <label>
-              Search
-            </label>
+          <div className="printer-filter-top-row">
 
             <input
+              className="role-search"
               type="search"
               placeholder={
-                'Printer, model, serial, location...'
+                'Search printer, model, serial, location...'
               }
               value={search}
               onChange={
@@ -195,63 +195,36 @@ export default function PrintersPage() {
               }
             />
 
-          </div>
 
-
-          <div className="filter-group">
-
-            <label>
-              Status
-            </label>
-
-            <select
-              value={statusFilter}
-              onChange={
-                event =>
-                  setStatusFilter(
-                    event.target.value
-                  )
-              }
-            >
-              <option value="all">
-                All
-              </option>
-
-              <option value="online">
-                Online
-              </option>
-
-              <option value="offline">
-                Offline
-              </option>
-
-              <option value="warning">
-                Warning
-              </option>
-
-              <option value="fault">
-                Fault
-              </option>
-
-              <option value="stopped">
-                Stopped
-              </option>
-            </select>
+            {
+              (
+                search
+                || statusFilter !== 'all'
+              )
+              && (
+                <button
+                  type="button"
+                  className="clear-filter-button"
+                  onClick={() => {
+                    setSearch('')
+                    setStatusFilter('all')
+                  }}
+                >
+                  Clear
+                </button>
+              )
+            }
 
           </div>
 
 
-          <button
-            className="clear-filter-button"
-            onClick={() => {
-              setSearch('')
-              setStatusFilter('all')
-            }}
-          >
-            Clear filters
-          </button>
+          <PrinterStatusFilter
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
 
         </div>
+
 
 
         <div className="panel-header">

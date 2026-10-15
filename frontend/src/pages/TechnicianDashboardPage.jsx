@@ -8,6 +8,9 @@ import {
   apiGet,
 } from '../api/client'
 
+import PrinterStatusFilter
+  from '../components/filters/PrinterStatusFilter'
+
 import '../styles/role-panels.css'
 
 
@@ -35,6 +38,13 @@ function printerState(
     return {
       label: 'Warning',
       className: 'warning',
+    }
+  }
+
+  if (printer.status === 'stopped') {
+    return {
+      label: 'Stopped',
+      className: 'stopped',
     }
   }
 
@@ -682,56 +692,51 @@ export default function TechnicianDashboardPage() {
           }}
         >
 
-          <div className="role-toolbar">
+          <div className="printer-filter-toolbar">
 
-            <input
-              className="role-search"
-              type="search"
-              placeholder={
-                'Search printer, customer, model, serial...'
+            <div className="printer-filter-top-row">
+
+              <input
+                className="role-search"
+                type="search"
+                placeholder={
+                  'Search printer, customer, model, serial...'
+                }
+                value={search}
+                onChange={
+                  event =>
+                    setSearch(
+                      event.target.value
+                    )
+                }
+              />
+
+              {
+                (
+                  search
+                  || statusFilter !== 'all'
+                )
+                && (
+                  <button
+                    type="button"
+                    className="clear-filter-button"
+                    onClick={() => {
+                      setSearch('')
+                      setStatusFilter('all')
+                    }}
+                  >
+                    Clear
+                  </button>
+                )
               }
-              value={search}
-              onChange={
-                event =>
-                  setSearch(
-                    event.target.value
-                  )
-              }
+
+            </div>
+
+
+            <PrinterStatusFilter
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
-
-
-            <select
-              className="role-filter"
-              value={
-                statusFilter
-              }
-              onChange={
-                event =>
-                  setStatusFilter(
-                    event.target.value
-                  )
-              }
-            >
-              <option value="all">
-                All statuses
-              </option>
-
-              <option value="online">
-                Online
-              </option>
-
-              <option value="offline">
-                Offline
-              </option>
-
-              <option value="warning">
-                Warning
-              </option>
-
-              <option value="fault">
-                Fault
-              </option>
-            </select>
 
           </div>
 

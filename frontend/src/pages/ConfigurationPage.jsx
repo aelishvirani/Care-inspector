@@ -1,425 +1,781 @@
 import {
-  useConfiguration,
-} from '../hooks/useConfiguration'
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
+import {
+  apiGet,
+  apiPut,
+} from '../api/client'
+
+import {
+  usePrinters,
+} from '../hooks/usePrinters'
+
+import '../styles/printer-configuration.css'
+
+
+function printerLabel(printer) {
+  const name =
+    printer.display_name
+    || printer.device_id
+
+  const serial =
+    printer.serial_number
+      ? `SN ${printer.serial_number}`
+      : 'No serial number'
+
+  return `${name} · ${serial}`
+}
 
 
 export default function ConfigurationPage() {
-
   const {
+    printers,
+    loading: printersLoading,
+    error: printersError,
+  } = usePrinters()
+
+  const [
+    selectedDeviceId,
+    setSelectedDeviceId,
+  ] = useState('')
+
+  const [
     configuration,
     setConfiguration,
+  ] = useState(null)
+
+  const [
     loading,
+    setLoading,
+  ] = useState(false)
+
+  const [
     saving,
+    setSaving,
+  ] = useState(false)
+
+  const [
     error,
+    setError,
+  ] = useState('')
+
+  const [
     saved,
-    save,
-  } = useConfiguration()
+    setSaved,
+  ] = useState(false)
 
 
-  if (loading) {
-    return (
-      <div className="loading-panel">
-        Loading configuration...
-      </div>
+  useEffect(() => {
+    if (
+      !selectedDeviceId
+      && printers.length > 0
+    ) {
+      setSelectedDeviceId(
+        printers[0].device_id
+      )
+    }
+  }, [
+    printers,
+    selectedDeviceId,
+  ])
+
+
+  useEffect(() => {
+    if (!selectedDeviceId) {
+      return
+    }
+
+    async function loadConfiguration() {
+      try {
+        setLoading(true)
+        setError('')
+        setSaved(false)
+
+        const data =
+          await apiGet(
+            `/secure/devices/${encodeURIComponent(
+              selectedDeviceId
+            )}/configuration`
+          )
+
+        setConfiguration(data)
+
+      } catch (err) {
+        console.error(err)
+
+        setError(
+          err.message
+          || 'Unable to load printer configuration'
+        )
+
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadConfiguration()
+  }, [selectedDeviceId])
+
+
+  const selectedPrinter =
+    useMemo(
+      () =>
+        printers.find(
+          printer =>
+            printer.device_id
+            === selectedDeviceId
+        ) || null,
+      [
+        printers,
+        selectedDeviceId,
+      ]
     )
-  }
-
-
-  if (!configuration) {
-    return (
-      <div className="error-banner">
-        Configuration unavailable.
-      </div>
-    )
-  }
 
 
   function updateField(
     field,
     value
   ) {
-    setConfiguration({
-      ...configuration,
-      [field]: value,
-    })
+    setSaved(false)
+
+    setConfiguration(
+      current => ({
+        ...current,
+        [field]: value,
+      })
+    )
+  }
+
+
+  async function saveConfiguration() {
+    if (
+      !selectedDeviceId
+      || !configuration
+    ) {
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError('')
+      setSaved(false)
+
+      const payload = {
+        collector_interval_seconds:
+          Number(
+            configuration
+              .collector_interval_seconds
+          ),
+
+        offline_timeout_seconds:
+          Number(
+            configuration
+              .offline_timeout_seconds
+          ),
+
+        temperature_high:
+          Number(
+            configuration
+              .temperature_high
+          ),
+
+        pressure_low:
+          Number(
+            configuration
+              .pressure_low
+          ),
+
+        pressure_high:
+          Number(
+            configuration
+              .pressure_high
+          ),
+
+        ink_low:
+          Number(
+            configuration.ink_low
+          ),
+
+        makeup_low:
+          Number(
+            configuration.makeup_low
+          ),
+      }
+
+      const data =
+        await apiPut(
+          `/secure/devices/${encodeURIComponent(
+            selectedDeviceId
+          )}/configuration`,
+          payload
+        )
+
+      setConfiguration(data)
+      setSaved(true)
+
+    } catch (err) {
+      console.error(err)
+
+      setError(
+        err.message
+        || 'Unable to save configuration'
+      )
+
+    } finally {
+      setSaving(false)
+    }
+  }
+
+
+  if (printersLoading) {
+    return (
+      <div className="loading-panel">
+        Loading printers...
+      </div>
+    )
   }
 
 
   return (
-    <div className="page">
+    <div className="page printer-config-page">
 
       <div className="page-heading">
+
         <div>
           <h1>
-            Configuration
+            Printer Configuration
           </h1>
 
           <p>
-            Printer connection,
-            monitoring and alert settings
+            Individual monitoring and
+            alert settings for each printer
           </p>
         </div>
+
       </div>
 
 
-      {error && (
+      {(error || printersError) && (
         <div className="error-banner">
-          {error}
+          {error || printersError}
         </div>
       )}
 
 
       {saved && (
         <div className="success-banner">
-          Configuration saved.
+          Configuration saved for{' '}
+          <strong>
+            {
+              selectedPrinter
+                ?.display_name
+              || selectedDeviceId
+            }
+          </strong>.
         </div>
       )}
 
 
-      <div className="configuration-grid">
+      <section className="printer-selector-panel">
 
+        <div className="printer-selector-heading">
 
-        <section className="panel">
+          <div>
+            <span className="config-eyebrow">
+              SELECT PRINTER
+            </span>
 
-          <div className="panel-header">
-            <div>
-              <h2>
-                Monitoring
-              </h2>
+            <h2>
+              Printer configuration
+            </h2>
 
-              <p>
-                Collection and offline
-                detection
-              </p>
-            </div>
+            <p>
+              Select a printer to view
+              or change its individual settings.
+            </p>
           </div>
 
+        </div>
 
-          <div className="config-form">
 
-            <label>
-              Collector Interval
-              <span>seconds</span>
-            </label>
+        <div className="printer-selector-row">
 
-            <input
-              type="number"
-              min="1"
-              value={
-                configuration
-                  .collector_interval_seconds
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'collector_interval_seconds',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
+          <div className="printer-select-control">
 
             <label>
-              Offline Timeout
-              <span>seconds</span>
-            </label>
-
-            <input
-              type="number"
-              min="5"
-              value={
-                configuration
-                  .offline_timeout_seconds
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'offline_timeout_seconds',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-          </div>
-
-        </section>
-
-
-        <section className="panel">
-
-          <div className="panel-header">
-            <div>
-              <h2>
-                Alert Thresholds
-              </h2>
-
-              <p>
-                Demo threshold values
-              </p>
-            </div>
-          </div>
-
-
-          <div className="config-form">
-
-            <label>
-              Temperature High
-              <span>°C</span>
-            </label>
-
-            <input
-              type="number"
-              step="0.1"
-              value={
-                configuration
-                  .temperature_high
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'temperature_high',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-
-            <label>
-              Pressure Low
-              <span>MPa</span>
-            </label>
-
-            <input
-              type="number"
-              step="0.001"
-              value={
-                configuration
-                  .pressure_low
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'pressure_low',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-
-            <label>
-              Pressure High
-              <span>MPa</span>
-            </label>
-
-            <input
-              type="number"
-              step="0.001"
-              value={
-                configuration
-                  .pressure_high
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'pressure_high',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-
-            <label>
-              Ink Low
-              <span>%</span>
-            </label>
-
-            <input
-              type="number"
-              value={
-                configuration
-                  .ink_low
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'ink_low',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-
-            <label>
-              Makeup Low
-              <span>%</span>
-            </label>
-
-            <input
-              type="number"
-              value={
-                configuration
-                  .makeup_low
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'makeup_low',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-          </div>
-
-        </section>
-
-
-        <section className="panel">
-
-          <div className="panel-header">
-            <div>
-              <h2>
-                Printer Connection
-              </h2>
-
-              <p>
-                Simulator or physical
-                Hitachi connection
-              </p>
-            </div>
-          </div>
-
-
-          <div className="config-form">
-
-            <label>
-              Printer Mode
+              Printer
             </label>
 
             <select
-              value={
-                configuration
-                  .printer_mode
-              }
+              value={selectedDeviceId}
               onChange={
                 event =>
-                  updateField(
-                    'printer_mode',
+                  setSelectedDeviceId(
                     event.target.value
                   )
               }
             >
-
-              <option value="simulator">
-                Simulator
-              </option>
-
-              <option value="hitachi_modbus">
-                Hitachi Modbus
-              </option>
-
+              {
+                printers.map(
+                  printer => (
+                    <option
+                      key={
+                        printer.device_id
+                      }
+                      value={
+                        printer.device_id
+                      }
+                    >
+                      {
+                        printerLabel(
+                          printer
+                        )
+                      }
+                    </option>
+                  )
+                )
+              }
             </select>
-
-
-            <label>
-              Host / IP
-            </label>
-
-            <input
-              type="text"
-              value={
-                configuration
-                  .printer_host
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'printer_host',
-                    event.target.value
-                  )
-              }
-            />
-
-
-            <label>
-              Port
-            </label>
-
-            <input
-              type="number"
-              value={
-                configuration
-                  .printer_port
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'printer_port',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
-
-
-            <label>
-              Modbus Device ID
-            </label>
-
-            <input
-              type="number"
-              value={
-                configuration
-                  .device_id
-              }
-              onChange={
-                event =>
-                  updateField(
-                    'device_id',
-                    Number(
-                      event.target.value
-                    )
-                  )
-              }
-            />
 
           </div>
 
-        </section>
 
-      </div>
-
-
-      <div className="configuration-actions">
-
-        <button
-          className="primary-button"
-          onClick={save}
-          disabled={saving}
-        >
           {
-            saving
-              ? 'Saving...'
-              : 'Save Configuration'
-          }
-        </button>
+            selectedPrinter
+            && (
+              <div className="selected-printer-summary">
 
-      </div>
+                <div>
+                  <span>
+                    Printer name
+                  </span>
+
+                  <strong>
+                    {
+                      selectedPrinter
+                        .display_name
+                      || selectedPrinter
+                        .device_id
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Serial number
+                  </span>
+
+                  <strong>
+                    {
+                      selectedPrinter
+                        .serial_number
+                      || '—'
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Model
+                  </span>
+
+                  <strong>
+                    {
+                      selectedPrinter
+                        .model_name
+                      || '—'
+                    }
+                  </strong>
+                </div>
+
+                <div>
+                  <span>
+                    Location
+                  </span>
+
+                  <strong>
+                    {
+                      selectedPrinter
+                        .location
+                      || '—'
+                    }
+                  </strong>
+                </div>
+
+              </div>
+            )
+          }
+
+        </div>
+
+      </section>
+
+
+      {
+        loading
+          ? (
+            <div className="loading-panel">
+              Loading printer configuration...
+            </div>
+          )
+          : configuration
+            ? (
+              <>
+
+                {
+                  configuration.inherited
+                  && (
+                    <div className="config-default-note">
+                      This printer currently uses
+                      the system default settings.
+                      Save once to create its own
+                      individual configuration.
+                    </div>
+                  )
+                }
+
+
+                <div className="printer-config-grid">
+
+                  <section className="config-section-card">
+
+                    <div className="config-section-header">
+
+                      <div>
+                        <span className="config-section-number">
+                          01
+                        </span>
+
+                        <div>
+                          <h2>
+                            Monitoring
+                          </h2>
+
+                          <p>
+                            Data collection and
+                            offline detection
+                          </p>
+                        </div>
+                      </div>
+
+                    </div>
+
+
+                    <div className="config-fields">
+
+                      <label>
+                        <span>
+                          Collector interval
+                          <small>
+                            Measurement collection frequency
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            min="1"
+                            value={
+                              configuration
+                                .collector_interval_seconds
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'collector_interval_seconds',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            sec
+                          </span>
+                        </div>
+                      </label>
+
+
+                      <label>
+                        <span>
+                          Offline timeout
+                          <small>
+                            Mark printer offline after no data
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            min="5"
+                            value={
+                              configuration
+                                .offline_timeout_seconds
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'offline_timeout_seconds',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            sec
+                          </span>
+                        </div>
+                      </label>
+
+                    </div>
+
+                  </section>
+
+
+                  <section className="config-section-card">
+
+                    <div className="config-section-header">
+
+                      <div>
+                        <span className="config-section-number">
+                          02
+                        </span>
+
+                        <div>
+                          <h2>
+                            Alert thresholds
+                          </h2>
+
+                          <p>
+                            Individual limits for
+                            this printer
+                          </p>
+                        </div>
+                      </div>
+
+                    </div>
+
+
+                    <div className="config-fields">
+
+                      <label>
+                        <span>
+                          Temperature high
+                          <small>
+                            Warning above this value
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={
+                              configuration
+                                .temperature_high
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'temperature_high',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            °C
+                          </span>
+                        </div>
+                      </label>
+
+
+                      <label>
+                        <span>
+                          Pressure low
+                          <small>
+                            Warning below this value
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={
+                              configuration
+                                .pressure_low
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'pressure_low',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            MPa
+                          </span>
+                        </div>
+                      </label>
+
+
+                      <label>
+                        <span>
+                          Pressure high
+                          <small>
+                            Warning above this value
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={
+                              configuration
+                                .pressure_high
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'pressure_high',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            MPa
+                          </span>
+                        </div>
+                      </label>
+
+
+                      <label>
+                        <span>
+                          Ink low
+                          <small>
+                            Simulator percentage threshold
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={
+                              configuration
+                                .ink_low
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'ink_low',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            %
+                          </span>
+                        </div>
+                      </label>
+
+
+                      <label>
+                        <span>
+                          Makeup low
+                          <small>
+                            Simulator percentage threshold
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={
+                              configuration
+                                .makeup_low
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'makeup_low',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            %
+                          </span>
+                        </div>
+                      </label>
+
+                    </div>
+
+                  </section>
+
+                </div>
+
+
+                <div className="printer-config-actions">
+
+                  <div>
+                    <strong>
+                      {
+                        selectedPrinter
+                          ?.display_name
+                        || selectedDeviceId
+                      }
+                    </strong>
+
+                    <span>
+                      {' · '}
+                      Serial{' '}
+                      {
+                        selectedPrinter
+                          ?.serial_number
+                        || '—'
+                      }
+                    </span>
+                  </div>
+
+
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={
+                      saveConfiguration
+                    }
+                    disabled={saving}
+                  >
+                    {
+                      saving
+                        ? 'Saving...'
+                        : 'Save configuration'
+                    }
+                  </button>
+
+                </div>
+
+              </>
+            )
+            : (
+              <div className="empty-state">
+                Select a printer.
+              </div>
+            )
+      }
 
     </div>
   )

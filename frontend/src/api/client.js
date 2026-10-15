@@ -103,3 +103,34 @@ export async function apiPost(
     response
   )
 }
+
+
+export async function apiPut(
+  path,
+  data,
+  authenticated = true
+) {
+  const response = await fetch(
+    `${API_BASE}${path}`,
+    {
+      method: 'PUT',
+
+      headers: {
+        'Content-Type':
+          'application/json',
+
+        ...(
+          authenticated
+            ? authHeaders()
+            : {}
+        ),
+      },
+
+      body: JSON.stringify(data),
+    }
+  )
+
+  return handleResponse(
+    response
+  )
+}

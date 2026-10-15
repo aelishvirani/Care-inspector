@@ -122,9 +122,18 @@ export default function HistoryPage() {
   const [
     deviceId,
     setDeviceId,
-  ] = useState(
-    queryDeviceId
-  )
+  ] = useState(() => {
+    if (queryDeviceId) {
+      return queryDeviceId
+    }
+
+    return (
+      sessionStorage.getItem(
+        'care_inspector_history_device_id'
+      )
+      || ''
+    )
+  })
 
 
   const [
@@ -140,39 +149,6 @@ export default function HistoryPage() {
 
 
   /*
-   * If History is opened directly,
-   * automatically choose the first
-   * available printer.
-   */
-  useEffect(() => {
-
-    if (
-      deviceId
-      || printers.length === 0
-    ) {
-      return
-    }
-
-    const firstPrinter =
-      printers[0]
-
-    setDeviceId(
-      firstPrinter.device_id
-    )
-
-    setSearchParams({
-      device_id:
-        firstPrinter.device_id,
-    })
-
-  }, [
-    printers,
-    deviceId,
-    setSearchParams,
-  ])
-
-
-  /*
    * Handle direct navigation such as:
    *
    * /history?device_id=demo-printer-002
@@ -184,6 +160,11 @@ export default function HistoryPage() {
       && queryDeviceId !== deviceId
     ) {
       setDeviceId(
+        queryDeviceId
+      )
+
+      sessionStorage.setItem(
+        'care_inspector_history_device_id',
         queryDeviceId
       )
     }
@@ -281,10 +262,22 @@ export default function HistoryPage() {
     setToTime('')
 
     if (nextDeviceId) {
+      sessionStorage.setItem(
+        'care_inspector_history_device_id',
+        nextDeviceId
+      )
+
       setSearchParams({
         device_id:
           nextDeviceId,
       })
+
+    } else {
+      sessionStorage.removeItem(
+        'care_inspector_history_device_id'
+      )
+
+      setSearchParams({})
     }
   }
 
@@ -358,7 +351,7 @@ export default function HistoryPage() {
             {
               selectedPrinter
                 ?.display_name
-              || 'History'
+              || 'Select Printer'
             }
           </h1>
 
@@ -388,7 +381,135 @@ export default function HistoryPage() {
       )}
 
 
-      {
+      <section className="panel">
+
+        <div className="filter-toolbar history-inline-toolbar">
+
+          <div className="filter-group history-printer-filter">
+
+            <label>
+              Printer
+            </label>
+
+            <select
+              value={deviceId}
+              onChange={
+                event =>
+                  changePrinter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="">
+                Select printer
+              </option>
+
+              {
+                printers.map(
+                  printer => (
+                    <option
+                      key={
+                        printer.device_id
+                      }
+                      value={
+                        printer.device_id
+                      }
+                    >
+                      {
+                        printer.display_name
+                        || printer.model_name
+                        || printer.device_id
+                      }
+
+                      {
+                        printer.model_name
+                        ? ` — ${printer.model_name}`
+                        : ''
+                      }
+
+                      {
+                        printer.serial_number
+                        ? ` — S/N ${printer.serial_number}`
+                        : ''
+                      }
+
+                    </option>
+                  )
+                )
+              }
+
+            </select>
+
+          </div>
+
+
+          <div className="filter-group">
+
+            <label>
+              From
+            </label>
+
+            <input
+              type="datetime-local"
+              value={fromTime}
+              disabled={!deviceId}
+              onChange={
+                event =>
+                  setFromTime(
+                    event.target.value
+                  )
+              }
+            />
+
+          </div>
+
+
+          <div className="filter-group">
+
+            <label>
+              To
+            </label>
+
+            <input
+              type="datetime-local"
+              value={toTime}
+              disabled={!deviceId}
+              onChange={
+                event =>
+                  setToTime(
+                    event.target.value
+                  )
+              }
+            />
+
+          </div>
+
+
+          {
+            (
+              fromTime
+              || toTime
+            )
+            && (
+              <button
+                type="button"
+                className="clear-filter-button"
+                onClick={
+                  clearDateFilters
+                }
+              >
+                Clear dates
+              </button>
+            )
+          }
+
+        </div>
+
+      </section>
+
+
+{
         selectedPrinter
         && (
           <section
@@ -543,120 +664,6 @@ export default function HistoryPage() {
           </section>
         )
       }
-
-
-      <section className="panel">
-
-        <div className="filter-toolbar">
-
-          <div className="filter-group">
-
-            <label>
-              Printer
-            </label>
-
-            <select
-              value={deviceId}
-              onChange={
-                event =>
-                  changePrinter(
-                    event.target.value
-                  )
-              }
-            >
-
-              {
-                printers.map(
-                  printer => (
-
-                    <option
-                      key={
-                        printer.device_id
-                      }
-                      value={
-                        printer.device_id
-                      }
-                    >
-                      {
-                        printer.display_name
-                        || printer.model_name
-                        || printer.device_id
-                      }
-                      {
-                        printer.model_name
-                        && (
-                          ` — ${printer.model_name}`
-                        )
-                      }
-                      {
-                        printer.serial_number
-                        && (
-                          ` — S/N ${printer.serial_number}`
-                        )
-                      }
-                    </option>
-
-                  )
-                )
-              }
-
-            </select>
-
-          </div>
-
-
-          <div className="filter-group">
-
-            <label>
-              From
-            </label>
-
-            <input
-              type="datetime-local"
-              value={fromTime}
-              onChange={
-                event =>
-                  setFromTime(
-                    event.target.value
-                  )
-              }
-            />
-
-          </div>
-
-
-          <div className="filter-group">
-
-            <label>
-              To
-            </label>
-
-            <input
-              type="datetime-local"
-              value={toTime}
-              onChange={
-                event =>
-                  setToTime(
-                    event.target.value
-                  )
-              }
-            />
-
-          </div>
-
-
-          <button
-            className="clear-filter-button"
-            onClick={
-              clearDateFilters
-            }
-          >
-            Clear dates
-          </button>
-
-        </div>
-
-      </section>
 
 
       <div className="history-summary-grid">

@@ -29,6 +29,7 @@ from .models import (
     Configuration,
     Customer,
     Device,
+    DeviceConfiguration,
     Measurement,
     User,
 )
@@ -99,10 +100,6 @@ async def offline_monitor():
         with SessionLocal() as db:
             config = get_configuration(db)
 
-            offline_after_seconds = (
-                config.offline_timeout_seconds
-            )
-
             devices = db.scalars(
                 select(Device)
             ).all()
@@ -112,6 +109,20 @@ async def offline_monitor():
             for device in devices:
                 if device.last_seen is None:
                     continue
+
+                device_config = db.get(
+                    DeviceConfiguration,
+                    device.device_id,
+                )
+
+                offline_after_seconds = (
+                    device_config
+                    .offline_timeout_seconds
+                    if device_config
+                    is not None
+                    else config
+                    .offline_timeout_seconds
+                )
 
                 last_seen = make_aware(
                     device.last_seen
@@ -1377,3 +1388,13 @@ app.include_router(secure_data_router)
 # Admin API
 from .admin import router as admin_router
 app.include_router(admin_router)
+
+
+# Per-printer configuration API
+from .device_configuration import (
+    router as device_configuration_router,
+)
+
+app.include_router(
+    device_configuration_router
+)

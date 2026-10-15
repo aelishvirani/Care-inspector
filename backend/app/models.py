@@ -534,3 +534,47 @@ class Configuration(Base):
         Integer,
         default=1,
     )
+
+
+class DeviceConfiguration(Base):
+    __tablename__ = "device_configurations"
+
+    device_id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+    )
+
+    collector_interval_seconds: Mapped[int] = mapped_column(
+        Integer,
+        default=5,
+    )
+
+    offline_timeout_seconds: Mapped[int] = mapped_column(
+        Integer,
+        default=15,
+    )
+
+    temperature_high: Mapped[float] = mapped_column(
+        Float,
+        default=27.5,
+    )
+
+    pressure_low: Mapped[float] = mapped_column(
+        Float,
+        default=0.246,
+    )
+
+    pressure_high: Mapped[float] = mapped_column(
+        Float,
+        default=0.260,
+    )
+
+    ink_low: Mapped[int] = mapped_column(
+        Integer,
+        default=70,
+    )
+
+    makeup_low: Mapped[int] = mapped_column(
+        Integer,
+        default=60,
+    )

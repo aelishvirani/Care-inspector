@@ -807,3 +807,232 @@
 .topbar-mfg-logo {
   display: none !important;
 }
+
+
+/* ======================================================
+   Shared printer status filters
+   ====================================================== */
+
+.printer-filter-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  padding: 16px 18px;
+
+  background: #f8fafb;
+  border: 1px solid #dce3e7;
+}
+
+.printer-filter-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.printer-filter-top-row .role-search {
+  flex: 1;
+  width: auto;
+  max-width: 520px;
+}
+
+.printer-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  overflow-x: auto;
+}
+
+.printer-status-filter {
+  height: 34px;
+
+  padding: 0 14px;
+
+  flex: 0 0 auto;
+
+  background: #ffffff;
+  color: #53616a;
+
+  border: 1px solid #cdd6db;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background .15s ease,
+    border-color .15s ease,
+    color .15s ease;
+}
+
+.printer-status-filter:hover {
+  background: #f0f4f5;
+}
+
+.printer-status-filter.selected {
+  border-color: #1595a3;
+  background: #e8f5f6;
+  color: #117985;
+}
+
+.printer-status-filter.online.selected {
+  border-color: #389268;
+  background: #e9f7ef;
+  color: #157347;
+}
+
+.printer-status-filter.offline.selected {
+  border-color: #c84954;
+  background: #fdebed;
+  color: #aa2733;
+}
+
+.printer-status-filter.warning.selected {
+  border-color: #d6a124;
+  background: #fff5da;
+  color: #8a6500;
+}
+
+.printer-status-filter.fault.selected {
+  border-color: #a82430;
+  background: #fbe5e7;
+  color: #951d28;
+}
+
+.printer-status-filter.stopped.selected {
+  border-color: #77848e;
+  background: #edf1f3;
+  color: #4f5e68;
+}
+
+
+/* ======================================================
+   History filters
+   ====================================================== */
+
+.history-filter-panel {
+  display: flex;
+  flex-direction: column;
+
+  background: #f8fafb;
+}
+
+.history-printer-row {
+  padding: 16px 20px;
+
+  border-bottom: 1px solid #dfe5e8;
+}
+
+.history-printer-row .filter-group {
+  width: 100%;
+  max-width: 620px;
+}
+
+.history-printer-row select {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 11px;
+
+  background: white;
+  border: 1px solid #cbd5da;
+
+  color: #17202a;
+  font-weight: 600;
+}
+
+.history-date-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+
+  padding: 14px 20px;
+}
+
+
+@media (max-width: 720px) {
+  .printer-filter-top-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .printer-filter-top-row .role-search {
+    width: 100%;
+    max-width: none;
+  }
+
+  .history-date-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-date-row .filter-group {
+    width: 100%;
+  }
+}
+
+
+.fleet-status.stopped {
+  color: #596873;
+  background: #edf1f3;
+}
+
+
+/* ======================================================
+   History inline printer/date filters
+   ====================================================== */
+
+.history-inline-toolbar {
+  align-items: flex-end;
+}
+
+.history-printer-filter {
+  width: 400px;
+  min-width: 320px;
+}
+
+.history-printer-filter select {
+  width: 100%;
+  height: 38px;
+
+  padding: 0 10px;
+
+  background: white;
+  border: 1px solid #ccd4da;
+
+  color: #17202a;
+  font-weight: 600;
+}
+
+.history-inline-toolbar input:disabled {
+  background: #f1f4f5;
+  color: #9aa4aa;
+  cursor: not-allowed;
+}
+
+
+@media (max-width: 1000px) {
+  .history-printer-filter {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .history-inline-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-inline-toolbar .filter-group {
+    width: 100%;
+  }
+}
+
+
+/* History: spacing after selector/filter row */
+.history-inline-toolbar {
+  margin-bottom: 20px;
+}

@@ -12,6 +12,9 @@ import {
   usePrinters,
 } from '../hooks/usePrinters'
 
+import PrinterStatusFilter
+  from '../components/filters/PrinterStatusFilter'
+
 import '../styles/role-panels.css'
 
 
@@ -336,79 +339,55 @@ export default function OverviewPage() {
       </div>
 
 
-      <div className="role-toolbar">
+      <div className="printer-filter-toolbar">
 
-        <input
-          className="role-search"
-          type="search"
-          placeholder={
-            'Search printer, model, serial, location...'
+        <div className="printer-filter-top-row">
+
+          <input
+            className="role-search"
+            type="search"
+            placeholder={
+              'Search printer, model, serial, location...'
+            }
+            value={search}
+            onChange={
+              event =>
+                setSearch(
+                  event.target.value
+                )
+            }
+          />
+
+
+          {
+            (
+              search
+              || statusFilter !== 'all'
+            )
+            && (
+              <button
+                type="button"
+                className="clear-filter-button"
+                onClick={() => {
+                  setSearch('')
+                  setStatusFilter('all')
+                }}
+              >
+                Clear
+              </button>
+            )
           }
-          value={search}
-          onChange={
-            event =>
-              setSearch(
-                event.target.value
-              )
-          }
+
+        </div>
+
+
+        <PrinterStatusFilter
+          value={statusFilter}
+          onChange={setStatusFilter}
         />
 
-
-        <select
-          className="role-filter"
-          value={statusFilter}
-          onChange={
-            event =>
-              setStatusFilter(
-                event.target.value
-              )
-          }
-        >
-          <option value="all">
-            All statuses
-          </option>
-
-          <option value="online">
-            Online
-          </option>
-
-          <option value="offline">
-            Offline
-          </option>
-
-          <option value="warning">
-            Warning
-          </option>
-
-          <option value="fault">
-            Fault
-          </option>
-
-          <option value="stopped">
-            Stopped
-          </option>
-        </select>
-
-
-        {
-          (
-            search
-            || statusFilter !== 'all'
-          )
-          && (
-            <button
-              className="clear-filter-button"
-              onClick={() => {
-                setSearch('')
-                setStatusFilter('all')
-              }}
-            >
-              Clear filters
-            </button>
-          )
-        }
-
       </div>
+
 
 
       <section className="role-section">

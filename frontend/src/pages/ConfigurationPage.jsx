@@ -415,6 +415,39 @@ export default function ConfigurationPage() {
 
 
       {
+        configuration
+        && !loading
+        && (
+          <div className="configuration-status-row">
+
+            <span
+              className={
+                configuration.inherited
+                  ? 'configuration-status default'
+                  : 'configuration-status custom'
+              }
+            >
+              {
+                configuration.inherited
+                  ? 'Default configuration'
+                  : 'Custom configuration'
+              }
+            </span>
+
+            <span className="configuration-status-help">
+              {
+                configuration.inherited
+                  ? 'Using system default monitoring thresholds'
+                  : 'Individual settings are active for this printer'
+              }
+            </span>
+
+          </div>
+        )
+      }
+
+
+      {
         loading
           ? (
             <div className="loading-panel">

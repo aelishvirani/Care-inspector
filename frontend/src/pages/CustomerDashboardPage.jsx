@@ -8,6 +8,10 @@ import {
   apiGet,
 } from '../api/client'
 
+import {
+  offlineReason,
+} from '../utils/printerStatus'
+
 import '../styles/role-panels.css'
 
 
@@ -410,13 +414,30 @@ export default function CustomerDashboardPage() {
                         </div>
 
 
-                        <span
-                          className={
-                            `fleet-status ${status.className}`
+                        <div className="printer-status-block">
+
+                          <span
+                            className={
+                              `fleet-status ${status.className}`
+                            }
+                          >
+                            {status.label}
+                          </span>
+
+                          {
+                            !printer.online
+                            && (
+                              <small className="offline-reason">
+                                {
+                                  offlineReason(
+                                    printer
+                                  )
+                                }
+                              </small>
+                            )
                           }
-                        >
-                          {status.label}
-                        </span>
+
+                        </div>
 
                       </div>
 

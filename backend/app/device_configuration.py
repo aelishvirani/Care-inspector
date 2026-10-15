@@ -47,6 +47,44 @@ class DeviceConfigurationUpdate(
     makeup_low: int
 
 
+FIELD_META = {
+    "collector_interval_seconds": (
+        "Collector interval",
+        "sec",
+    ),
+
+    "offline_timeout_seconds": (
+        "Offline timeout",
+        "sec",
+    ),
+
+    "temperature_high": (
+        "Temperature high",
+        "°C",
+    ),
+
+    "pressure_low": (
+        "Pressure low",
+        "MPa",
+    ),
+
+    "pressure_high": (
+        "Pressure high",
+        "MPa",
+    ),
+
+    "ink_low": (
+        "Ink low",
+        "%",
+    ),
+
+    "makeup_low": (
+        "Makeup low",
+        "%",
+    ),
+}
+
+
 def get_global_configuration(
     db,
 ):
@@ -113,6 +151,13 @@ def configuration_payload(
         "inherited":
             inherited,
 
+        "configuration_status":
+            (
+                "default"
+                if inherited
+                else "custom"
+            ),
+
         "collector_interval_seconds":
             config.collector_interval_seconds,
 
@@ -134,6 +179,73 @@ def configuration_payload(
         "makeup_low":
             config.makeup_low,
     }
+
+
+def snapshot_configuration(
+    config,
+):
+    return {
+        "collector_interval_seconds":
+            config.collector_interval_seconds,
+
+        "offline_timeout_seconds":
+            config.offline_timeout_seconds,
+
+        "temperature_high":
+            config.temperature_high,
+
+        "pressure_low":
+            config.pressure_low,
+
+        "pressure_high":
+            config.pressure_high,
+
+        "ink_low":
+            config.ink_low,
+
+        "makeup_low":
+            config.makeup_low,
+    }
+
+
+def change_summary(
+    old_data,
+    new_data,
+):
+    if old_data is None:
+        return (
+            "Created individual printer "
+            "configuration"
+        )
+
+    changes = []
+
+    for field, new_value in (
+        new_data.items()
+    ):
+        old_value = old_data.get(
+            field
+        )
+
+        if old_value == new_value:
+            continue
+
+        label, unit = FIELD_META[
+            field
+        ]
+
+        changes.append(
+            f"{label}: "
+            f"{old_value} → "
+            f"{new_value} {unit}"
+        )
+
+    if not changes:
+        return "No configuration values changed"
+
+    return "; ".join(
+        changes
+    )
 
 
 @router.get(
@@ -244,8 +356,8 @@ async def update_device_configuration(
         raise HTTPException(
             status_code=400,
             detail=(
-                "Makeup threshold must "
-                "be between 0 and 100"
+                "Makeup threshold must be "
+                "between 0 and 100"
             ),
         )
 
@@ -263,32 +375,17 @@ async def update_device_configuration(
         old_data = None
 
         if config is not None:
-            old_data = {
-                "collector_interval_seconds":
-                    config.collector_interval_seconds,
-
-                "offline_timeout_seconds":
-                    config.offline_timeout_seconds,
-
-                "temperature_high":
-                    config.temperature_high,
-
-                "pressure_low":
-                    config.pressure_low,
-
-                "pressure_high":
-                    config.pressure_high,
-
-                "ink_low":
-                    config.ink_low,
-
-                "makeup_low":
-                    config.makeup_low,
-            }
+            old_data = (
+                snapshot_configuration(
+                    config
+                )
+            )
 
         if config is None:
-            config = DeviceConfiguration(
-                device_id=device_id,
+            config = (
+                DeviceConfiguration(
+                    device_id=device_id,
+                )
             )
 
             db.add(config)
@@ -335,6 +432,11 @@ async def update_device_configuration(
             else "unknown"
         )
 
+        summary = change_summary(
+            old_data,
+            new_data,
+        )
+
         log_audit(
             db,
             user=user,
@@ -349,8 +451,8 @@ async def update_device_configuration(
             status_code=200,
             details=(
                 f"{printer_name} "
-                f"(Serial {serial_text}) "
-                "configuration updated"
+                f"(Serial {serial_text}) — "
+                f"{summary}"
             ),
             old_value=(
                 json.dumps(

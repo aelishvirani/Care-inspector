@@ -1,17 +1,32 @@
+import {
+  printerStatus,
+} from '../../utils/printerStatus'
+
+
 export default function StatusBadge({
+  printer,
   online,
+  status,
 }) {
+  const effectivePrinter =
+    printer
+    || {
+      online,
+      status,
+    }
+
+  const info =
+    printerStatus(
+      effectivePrinter
+    )
+
   return (
     <span
       className={
-        online
-          ? 'status-badge online'
-          : 'status-badge offline'
+        `fleet-status ${info.className}`
       }
     >
-      <span className="status-dot" />
-
-      {online ? 'Online' : 'Offline'}
+      {info.label}
     </span>
   )
 }

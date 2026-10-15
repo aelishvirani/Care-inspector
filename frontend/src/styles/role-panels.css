@@ -1036,3 +1036,21 @@
 .history-inline-toolbar {
   margin-bottom: 20px;
 }
+
+
+.offline-reason {
+  display: block;
+
+  margin-top: 5px;
+
+  color: #8b5b60;
+  font-size: 10px;
+  text-align: right;
+}
+
+
+/* Temporarily hidden.
+   Re-enable next Monday when Last Seen is restored. */
+.offline-reason {
+  display: none !important;
+}

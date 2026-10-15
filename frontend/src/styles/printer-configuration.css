@@ -288,3 +288,40 @@
     gap: 15px;
   }
 }
+
+
+.configuration-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 18px;
+}
+
+.configuration-status {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 6px 10px;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  text-transform: uppercase;
+  letter-spacing: .45px;
+}
+
+.configuration-status.default {
+  background: #edf1f3;
+  color: #5f6d76;
+}
+
+.configuration-status.custom {
+  background: #e9f7ef;
+  color: #157347;
+}
+
+.configuration-status-help {
+  color: #7d8992;
+  font-size: 11px;
+}

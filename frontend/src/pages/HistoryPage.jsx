@@ -21,6 +21,11 @@ import HistoryLineChart
   from '../components/charts/HistoryLineChart'
 
 
+import {
+  offlineReason,
+} from '../utils/printerStatus'
+
+
 function toIsoLocal(value) {
   if (!value) return ''
 
@@ -613,13 +618,30 @@ export default function HistoryPage() {
               </div>
 
 
-              <span
-                className={
-                  `fleet-status ${status.className}`
+              <div className="printer-status-block">
+
+                <span
+                  className={
+                    `fleet-status ${status.className}`
+                  }
+                >
+                  {status.label}
+                </span>
+
+                {
+                  !selectedPrinter.online
+                  && (
+                    <small className="offline-reason">
+                      {
+                        offlineReason(
+                          selectedPrinter
+                        )
+                      }
+                    </small>
+                  )
                 }
-              >
-                {status.label}
-              </span>
+
+              </div>
 
             </div>
 

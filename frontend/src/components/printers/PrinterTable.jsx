@@ -98,9 +98,7 @@ export default function PrinterTable({
 
                 <td>
                   <StatusBadge
-                    online={
-                      printer.online
-                    }
+                    printer={printer}
                   />
                 </td>
 

@@ -15,6 +15,10 @@ import {
 import PrinterStatusFilter
   from '../components/filters/PrinterStatusFilter'
 
+import {
+  offlineReason,
+} from '../utils/printerStatus'
+
 import '../styles/role-panels.css'
 
 
@@ -508,13 +512,30 @@ export default function OverviewPage() {
                         </div>
 
 
-                        <span
-                          className={
-                            `fleet-status ${state.className}`
+                        <div className="printer-status-block">
+
+                          <span
+                            className={
+                              `fleet-status ${state.className}`
+                            }
+                          >
+                            {state.label}
+                          </span>
+
+                          {
+                            !printer.online
+                            && (
+                              <small className="offline-reason">
+                                {
+                                  offlineReason(
+                                    printer
+                                  )
+                                }
+                              </small>
+                            )
                           }
-                        >
-                          {state.label}
-                        </span>
+
+                        </div>
 
                       </div>
 

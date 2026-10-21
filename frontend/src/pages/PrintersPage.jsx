@@ -48,6 +48,7 @@ export default function PrintersPage() {
               || [
                 printer.display_name,
                 printer.device_id,
+                printer.customer_name,
                 printer.model_name,
                 printer.serial_number,
                 printer.location,

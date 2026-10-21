@@ -33,13 +33,11 @@ export default function PrinterTable({
 
         <thead>
           <tr>
-            <th>Printer</th>
+            <th>Printer ID</th>
+            <th>Customer Name</th>
             <th>Model</th>
-            <th>Serial</th>
             <th>Status</th>
-            <th>Location</th>
-            <th>Print Count</th>
-            <th>Temperature</th>
+            <th>Source</th>
             <th>Last Seen</th>
           </tr>
         </thead>
@@ -67,22 +65,17 @@ export default function PrinterTable({
               >
 
                 <td>
-                  <div className="printer-name">
-                    {
-                      printer.display_name
-                      || 'Printer'
-                    }
-                  </div>
-
                   <div className="printer-table-id">
-                    {printer.device_id}
+                    {
+                      printer.device_id
+                    }
                   </div>
                 </td>
 
 
                 <td>
                   {
-                    printer.model_name
+                    printer.customer_name
                     || '—'
                   }
                 </td>
@@ -90,7 +83,7 @@ export default function PrinterTable({
 
                 <td>
                   {
-                    printer.serial_number
+                    printer.model_name
                     || '—'
                   }
                 </td>
@@ -105,31 +98,8 @@ export default function PrinterTable({
 
                 <td>
                   {
-                    printer.location
+                    printer.source
                     || '—'
-                  }
-                </td>
-
-
-                <td>
-                  {
-                    printer.print_count
-                    ?? '—'
-                  }
-                </td>
-
-
-                <td>
-                  {
-                    printer.temperature_c
-                    ?? '—'
-                  }
-                  {
-                    printer.temperature_c
-                    !== null
-                    && printer.temperature_c
-                      !== undefined
-                    && ' °C'
                   }
                 </td>
 

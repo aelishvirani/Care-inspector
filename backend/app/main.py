@@ -239,27 +239,66 @@ async def devices():
             .order_by(Device.device_id)
         ).all()
 
+        customers = db.scalars(
+            select(Customer)
+        ).all()
+
+        customer_names = {
+            customer.id: customer.name
+            for customer in customers
+        }
+
         return [
             {
                 "device_id": d.device_id,
+
+                "customer_id": (
+                    d.customer_id
+                ),
+
+                "customer_name": (
+                    customer_names.get(
+                        d.customer_id
+                    )
+                    if d.customer_id
+                    is not None
+                    else None
+                ),
+
+                "display_name": (
+                    d.display_name
+                ),
+
+                "location": (
+                    d.location
+                ),
+
                 "source": d.source,
                 "online": d.online,
                 "status": d.status,
+
                 "last_seen": (
                     d.last_seen.isoformat()
                     if d.last_seen
                     else None
                 ),
-                "print_count": d.print_count,
+
+                "print_count": (
+                    d.print_count
+                ),
+
                 "temperature_c": (
                     d.temperature_c
                 ),
+
                 "pressure_mpa": (
                     d.pressure_mpa
                 ),
+
                 "ink_level_percent": (
                     d.ink_level_percent
                 ),
+
                 "makeup_level_percent": (
                     d.makeup_level_percent
                 ),
@@ -1248,6 +1287,15 @@ async def secure_devices(
             )
         ).all()
 
+        customers = db.scalars(
+            select(Customer)
+        ).all()
+
+        customer_names = {
+            customer.id: customer.name
+            for customer in customers
+        }
+
         return [
             {
                 "device_id": d.device_id,
@@ -1258,6 +1306,15 @@ async def secure_devices(
 
                 "customer_id": (
                     d.customer_id
+                ),
+
+                "customer_name": (
+                    customer_names.get(
+                        d.customer_id
+                    )
+                    if d.customer_id
+                    is not None
+                    else None
                 ),
 
                 "location": (

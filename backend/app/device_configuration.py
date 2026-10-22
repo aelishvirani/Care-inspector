@@ -39,6 +39,7 @@ class DeviceConfigurationUpdate(
     collector_interval_seconds: int
     offline_timeout_seconds: int
 
+    temperature_low: float
     temperature_high: float
     pressure_low: float
     pressure_high: float
@@ -56,6 +57,11 @@ FIELD_META = {
     "offline_timeout_seconds": (
         "Offline timeout",
         "sec",
+    ),
+
+    "temperature_low": (
+        "Temperature low",
+        "°C",
     ),
 
     "temperature_high": (
@@ -163,6 +169,12 @@ def configuration_payload(
 
         "offline_timeout_seconds":
             config.offline_timeout_seconds,
+
+        "temperature_low":
+            config.temperature_low,
+
+        "temperature_low":
+            config.temperature_low,
 
         "temperature_high":
             config.temperature_high,
@@ -328,6 +340,18 @@ async def update_device_configuration(
         )
 
     if (
+        data.temperature_low
+        >= data.temperature_high
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Temperature low must be "
+                "lower than temperature high"
+            ),
+        )
+
+    if (
         data.pressure_low
         >= data.pressure_high
     ):
@@ -396,6 +420,10 @@ async def update_device_configuration(
 
         config.offline_timeout_seconds = (
             data.offline_timeout_seconds
+        )
+
+        config.temperature_low = (
+            data.temperature_low
         )
 
         config.temperature_high = (

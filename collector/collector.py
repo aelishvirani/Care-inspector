@@ -90,12 +90,14 @@ async def collect_measurements(
     printer,
     queue: OfflineQueue,
     interval: int,
+    printer_lock: asyncio.Lock,
 ):
     while True:
-        measurement = (
-            await printer
-            .read_measurement()
-        )
+        async with printer_lock:
+            measurement = (
+                await printer
+                .read_measurement()
+            )
 
         queue_id = queue.enqueue(
             measurement
@@ -239,6 +241,156 @@ async def send_pending_measurements(
             )
 
 
+
+
+async def handle_control_commands(
+    backend_control_ws: str,
+    printer,
+    printer_lock: asyncio.Lock,
+):
+    while True:
+        try:
+            async with websockets.connect(
+                backend_control_ws
+            ) as websocket:
+                logging.info(
+                    "Printer control channel "
+                    "connected"
+                )
+
+                while True:
+                    raw_message = (
+                        await websocket.recv()
+                    )
+
+                    payload = json.loads(
+                        raw_message
+                    )
+
+                    if (
+                        payload.get("type")
+                        != "printer_command"
+                    ):
+                        continue
+
+                    command_id = payload.get(
+                        "command_id"
+                    )
+
+                    command = (
+                        payload.get(
+                            "command",
+                            "",
+                        )
+                        .strip()
+                        .lower()
+                    )
+
+                    try:
+                        async with printer_lock:
+                            if command == "start":
+                                result = (
+                                    await printer.start()
+                                )
+
+                            elif command == "stop":
+                                result = (
+                                    await printer.stop()
+                                )
+
+                            else:
+                                raise ValueError(
+                                    "Unsupported printer "
+                                    f"command: {command}"
+                                )
+
+                            await asyncio.sleep(
+                                1
+                            )
+
+                            measurement = (
+                                await printer
+                                .read_measurement()
+                            )
+
+                        status = (
+                            measurement.get(
+                                "status"
+                            )
+                        )
+
+                        logging.info(
+                            "Printer command completed | "
+                            "command=%s | status=%s",
+                            command,
+                            status,
+                        )
+
+                        await websocket.send(
+                            json.dumps(
+                                {
+                                    "type":
+                                        "command_result",
+                                    "command_id":
+                                        command_id,
+                                    "success":
+                                        True,
+                                    "command":
+                                        command,
+                                    "status":
+                                        status,
+                                    "message":
+                                        result.get(
+                                            "message",
+                                            (
+                                                "Printer command "
+                                                "completed"
+                                            ),
+                                        ),
+                                }
+                            )
+                        )
+
+                    except Exception as exc:
+                        logging.error(
+                            "Printer command failed | "
+                            "command=%s | error=%s",
+                            command,
+                            exc,
+                        )
+
+                        await websocket.send(
+                            json.dumps(
+                                {
+                                    "type":
+                                        "command_result",
+                                    "command_id":
+                                        command_id,
+                                    "success":
+                                        False,
+                                    "command":
+                                        command,
+                                    "error":
+                                        str(exc),
+                                }
+                            )
+                        )
+
+        except asyncio.CancelledError:
+            raise
+
+        except Exception as exc:
+            logging.warning(
+                "Control channel unavailable | "
+                "%s",
+                exc,
+            )
+
+            await asyncio.sleep(
+                BACKEND_RETRY_SECONDS
+            )
+
+
 async def run_collector():
     while True:
         printer = None
@@ -268,7 +420,14 @@ async def run_collector():
                 f"{device_name}"
             )
 
+            backend_control_ws = (
+                f"{BACKEND_BASE}/"
+                f"ws/collector-control/"
+                f"{device_name}"
+            )
+
             queue = OfflineQueue()
+            printer_lock = asyncio.Lock()
 
             logging.info(
                 "Loaded configuration | "
@@ -322,6 +481,7 @@ async def run_collector():
                         printer,
                         queue,
                         interval,
+                        printer_lock,
                     )
                 )
             )
@@ -335,11 +495,22 @@ async def run_collector():
                 )
             )
 
+            control_task = (
+                asyncio.create_task(
+                    handle_control_commands(
+                        backend_control_ws,
+                        printer,
+                        printer_lock,
+                    )
+                )
+            )
+
             done, pending = (
                 await asyncio.wait(
                     {
                         collector_task,
                         sender_task,
+                        control_task,
                     },
                     return_when=(
                         asyncio

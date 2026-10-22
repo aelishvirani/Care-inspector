@@ -67,6 +67,47 @@ export default function ConfigurationPage() {
     setSaved,
   ] = useState(false)
 
+  const [
+    globalConfiguration,
+    setGlobalConfiguration,
+  ] = useState(null)
+
+  const [
+    savingConnection,
+    setSavingConnection,
+  ] = useState(false)
+
+  const [
+    connectionSaved,
+    setConnectionSaved,
+  ] = useState(false)
+
+
+  useEffect(() => {
+    async function loadGlobalConfiguration() {
+      try {
+        const data =
+          await apiGet(
+            '/configuration'
+          )
+
+        setGlobalConfiguration(
+          data
+        )
+
+      } catch (err) {
+        console.error(err)
+
+        setError(
+          err.message
+          || 'Unable to load collector connection settings'
+        )
+      }
+    }
+
+    loadGlobalConfiguration()
+  }, [])
+
 
   useEffect(() => {
     if (
@@ -150,6 +191,116 @@ export default function ConfigurationPage() {
   }
 
 
+  function updateGlobalField(
+    field,
+    value
+  ) {
+    setConnectionSaved(false)
+
+    setGlobalConfiguration(
+      current => ({
+        ...current,
+        [field]: value,
+      })
+    )
+  }
+
+
+  async function saveGlobalConfiguration() {
+    if (!globalConfiguration) {
+      return
+    }
+
+    try {
+      setSavingConnection(true)
+      setConnectionSaved(false)
+      setError('')
+
+      const payload = {
+        collector_interval_seconds:
+          Number(
+            globalConfiguration
+              .collector_interval_seconds
+          ),
+        offline_timeout_seconds:
+          Number(
+            globalConfiguration
+              .offline_timeout_seconds
+          ),
+        temperature_low:
+          Number(
+            globalConfiguration
+              .temperature_low
+          ),
+        temperature_high:
+          Number(
+            globalConfiguration
+              .temperature_high
+          ),
+        pressure_low:
+          Number(
+            globalConfiguration
+              .pressure_low
+          ),
+        pressure_high:
+          Number(
+            globalConfiguration
+              .pressure_high
+          ),
+        ink_low:
+          Number(
+            globalConfiguration
+              .ink_low
+          ),
+        makeup_low:
+          Number(
+            globalConfiguration
+              .makeup_low
+          ),
+        printer_mode:
+          globalConfiguration
+            .printer_mode,
+        printer_host:
+          globalConfiguration
+            .printer_host,
+        printer_port:
+          Number(
+            globalConfiguration
+              .printer_port
+          ),
+        device_id:
+          Number(
+            globalConfiguration
+              .device_id
+          ),
+      }
+
+      const result =
+        await apiPut(
+          '/configuration',
+          payload
+        )
+
+      setGlobalConfiguration(
+        result.configuration
+      )
+
+      setConnectionSaved(true)
+
+    } catch (err) {
+      console.error(err)
+
+      setError(
+        err.message
+        || 'Unable to save collector connection settings'
+      )
+
+    } finally {
+      setSavingConnection(false)
+    }
+  }
+
+
   async function saveConfiguration() {
     if (
       !selectedDeviceId
@@ -174,6 +325,12 @@ export default function ConfigurationPage() {
           Number(
             configuration
               .offline_timeout_seconds
+          ),
+
+        temperature_low:
+          Number(
+            configuration
+              .temperature_low
           ),
 
         temperature_high:
@@ -265,6 +422,15 @@ export default function ConfigurationPage() {
       )}
 
 
+      {connectionSaved && (
+        <div className="success-banner">
+          Collector connection settings saved.
+          Restart the collector to apply
+          mode, host, port, or device ID changes.
+        </div>
+      )}
+
+
       {saved && (
         <div className="success-banner">
           Configuration saved for{' '}
@@ -277,6 +443,193 @@ export default function ConfigurationPage() {
           </strong>.
         </div>
       )}
+
+
+      {
+        globalConfiguration
+        && (
+          <section className="config-section-card collector-connection-card">
+
+            <div className="config-section-header">
+
+              <div>
+                <span className="config-section-number">
+                  00
+                </span>
+
+                <div>
+                  <h2>
+                    Collector / Printer Connection
+                  </h2>
+
+                  <p>
+                    Global connection used by the
+                    active collector process
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+
+            <div className="config-fields">
+
+              <label>
+                <span>
+                  Printer mode
+                  <small>
+                    Select simulator or vendor driver
+                  </small>
+                </span>
+
+                <select
+                  value={
+                    globalConfiguration
+                      .printer_mode
+                  }
+                  onChange={
+                    event =>
+                      updateGlobalField(
+                        'printer_mode',
+                        event.target.value
+                      )
+                  }
+                >
+                  <option value="simulator">
+                    Simulator
+                  </option>
+
+                  <option value="hitachi_modbus">
+                    Hitachi Modbus
+                  </option>
+                </select>
+              </label>
+
+
+              <label>
+                <span>
+                  Printer host
+                  <small>
+                    IP address or hostname
+                  </small>
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    globalConfiguration
+                      .printer_host
+                  }
+                  onChange={
+                    event =>
+                      updateGlobalField(
+                        'printer_host',
+                        event.target.value
+                      )
+                  }
+                />
+              </label>
+
+
+              <label>
+                <span>
+                  Printer port
+                  <small>
+                    TCP port used by the driver
+                  </small>
+                </span>
+
+                <input
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value={
+                    globalConfiguration
+                      .printer_port
+                  }
+                  onChange={
+                    event =>
+                      updateGlobalField(
+                        'printer_port',
+                        event.target.value
+                      )
+                  }
+                />
+              </label>
+
+
+              <label>
+                <span>
+                  Device ID
+                  <small>
+                    Modbus device / unit identifier
+                  </small>
+                </span>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={
+                    globalConfiguration
+                      .device_id
+                  }
+                  onChange={
+                    event =>
+                      updateGlobalField(
+                        'device_id',
+                        event.target.value
+                      )
+                  }
+                />
+              </label>
+
+            </div>
+
+
+            <div className="printer-config-actions">
+
+              <div>
+                <strong>
+                  Active collector connection
+                </strong>
+
+                <span>
+                  {' · '}
+                  {
+                    globalConfiguration
+                      .printer_host
+                  }
+                  :
+                  {
+                    globalConfiguration
+                      .printer_port
+                  }
+                </span>
+              </div>
+
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={
+                  saveGlobalConfiguration
+                }
+                disabled={
+                  savingConnection
+                }
+              >
+                {
+                  savingConnection
+                    ? 'Saving...'
+                    : 'Save connection'
+                }
+              </button>
+
+            </div>
+
+          </section>
+        )
+      }
 
 
       <section className="printer-selector-panel">
@@ -592,6 +945,38 @@ export default function ConfigurationPage() {
 
 
                     <div className="config-fields">
+
+                      <label>
+                        <span>
+                          Temperature low
+                          <small>
+                            Warning below this value
+                          </small>
+                        </span>
+
+                        <div className="config-input-unit">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={
+                              configuration
+                                .temperature_low
+                            }
+                            onChange={
+                              event =>
+                                updateField(
+                                  'temperature_low',
+                                  event.target.value
+                                )
+                            }
+                          />
+
+                          <span>
+                            °C
+                          </span>
+                        </div>
+                      </label>
+
 
                       <label>
                         <span>

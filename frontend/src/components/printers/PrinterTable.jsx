@@ -5,6 +5,9 @@ import {
 import StatusBadge
   from '../common/StatusBadge'
 
+import PrinterControlButtons
+  from './PrinterControlButtons'
+
 import {
   formatDateTime,
 } from '../../utils/formatters'
@@ -12,6 +15,7 @@ import {
 
 export default function PrinterTable({
   printers,
+  onPrinterChanged,
 }) {
   const navigate =
     useNavigate()
@@ -39,6 +43,7 @@ export default function PrinterTable({
             <th>Status</th>
             <th>Source</th>
             <th>Last Seen</th>
+            <th>Control</th>
           </tr>
         </thead>
 
@@ -110,6 +115,17 @@ export default function PrinterTable({
                       printer.last_seen
                     )
                   }
+                </td>
+
+
+                <td>
+                  <PrinterControlButtons
+                    printer={printer}
+                    compact
+                    onChanged={
+                      onPrinterChanged
+                    }
+                  />
                 </td>
 
               </tr>

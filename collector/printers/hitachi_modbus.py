@@ -10,13 +10,11 @@ from printers.base import PrinterDriver
 
 class HitachiModbusPrinter(PrinterDriver):
     """
-    Read-only Hitachi UX2 Modbus TCP driver.
+    Hitachi UX2 Modbus TCP driver.
 
-    Safety:
-    - Only Modbus function 0x04 is used.
-    - No Holding Register writes.
-    - No remote printer control.
-    - No print-job modification.
+    Monitoring stays read-only through Input Registers (function 0x04).
+    Explicit start/stop commands use the UX2 Remote operation Holding
+    Register documented by Hitachi. No print-job data is modified.
     """
 
     REG_CONNECTION_STATUS = 0x0000
@@ -53,6 +51,13 @@ class HitachiModbusPrinter(PrinterDriver):
 
     REG_INK_REMAINING = 0x0BEB
     REG_MAKEUP_REMAINING = 0x0BEC
+
+    # Hitachi UX2 Communication User's Manual (Modbus):
+    # Holding Register 0x2494, Remote operation.
+    # 0 = Operation start, 1 = Operation stop.
+    REG_REMOTE_OPERATION = 0x2494
+    REMOTE_OPERATION_START = 0
+    REMOTE_OPERATION_STOP = 1
 
     def __init__(
         self,
@@ -451,6 +456,57 @@ class HitachiModbusPrinter(PrinterDriver):
 
             **identity,
             **operation_data,
+        }
+
+
+    async def _write_remote_operation(
+        self,
+        value: int,
+    ) -> None:
+        connection = (
+            await self._read_input_registers(
+                self.REG_CONNECTION_STATUS
+            )
+        )[0]
+
+        if self._connection_status(
+            connection
+        ) != "online":
+            raise RuntimeError(
+                "Hitachi printer is offline; "
+                "remote operation is not allowed"
+            )
+
+        response = await self.client.write_register(
+            address=self.REG_REMOTE_OPERATION,
+            value=value,
+            device_id=self.device_id,
+        )
+
+        if response.isError():
+            raise RuntimeError(
+                "Hitachi remote-operation "
+                f"write failed: {response}"
+            )
+
+    async def start(self) -> dict[str, Any]:
+        await self._write_remote_operation(
+            self.REMOTE_OPERATION_START
+        )
+
+        return {
+            "success": True,
+            "message": "Hitachi operation start command accepted",
+        }
+
+    async def stop(self) -> dict[str, Any]:
+        await self._write_remote_operation(
+            self.REMOTE_OPERATION_STOP
+        )
+
+        return {
+            "success": True,
+            "message": "Hitachi operation stop command accepted",
         }
 
     async def read_measurement(

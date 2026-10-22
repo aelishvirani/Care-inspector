@@ -1,5 +1,6 @@
 import {
   apiGet,
+  apiPost,
 } from '../api/client'
 
 
@@ -63,5 +64,20 @@ export function getPrinterAlerts(
 
   return apiGet(
     `/secure/alerts?${params.toString()}`
+  )
+}
+
+
+export function sendPrinterCommand(
+  deviceId,
+  command
+) {
+  return apiPost(
+    `/secure/devices/${encodeURIComponent(
+      deviceId
+    )}/commands/${encodeURIComponent(
+      command
+    )}`,
+    {}
   )
 }

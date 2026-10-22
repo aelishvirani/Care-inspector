@@ -19,6 +19,7 @@ export default function PrintersPage() {
     printers,
     loading,
     error,
+    refresh,
   } = usePrinters()
 
   const [
@@ -250,6 +251,9 @@ export default function PrintersPage() {
         <PrinterTable
           printers={
             filteredPrinters
+          }
+          onPrinterChanged={
+            refresh
           }
         />
 

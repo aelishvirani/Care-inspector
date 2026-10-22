@@ -748,6 +748,9 @@ async def update_configuration(
                     config
                     .offline_timeout_seconds
                 ),
+                "temperature_low": (
+                    config.temperature_low
+                ),
                 "temperature_high": (
                     config.temperature_high
                 ),

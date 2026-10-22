@@ -6,6 +6,10 @@ import {
   sendPrinterCommand,
 } from '../../services/printerService'
 
+import {
+  useAuth,
+} from '../../auth/AuthContext'
+
 
 function isStarted(
   status
@@ -30,6 +34,10 @@ export default function PrinterControlButtons({
   onChanged,
   compact = false,
 }) {
+  const {
+    user,
+  } = useAuth()
+
   const [
     pending,
     setPending,
@@ -73,6 +81,14 @@ export default function PrinterControlButtons({
     || pending !== null
     || status === 'stopped'
     || status === 'offline'
+
+  const canControl =
+    user?.role === 'TECHNICIAN'
+    || user?.role === 'ADMIN'
+
+  if (!canControl) {
+    return null
+  }
 
 
   async function runCommand(

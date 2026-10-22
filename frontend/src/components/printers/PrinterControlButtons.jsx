@@ -40,9 +40,16 @@ export default function PrinterControlButtons({
     setError,
   ] = useState('')
 
+  const [
+    commandStatus,
+    setCommandStatus,
+  ] = useState(null)
+
   const status =
     String(
-      printer?.status || ''
+      commandStatus
+      || printer?.status
+      || ''
     ).toLowerCase()
 
   const online =
@@ -90,10 +97,17 @@ export default function PrinterControlButtons({
     setError('')
 
     try {
-      await sendPrinterCommand(
-        printer.device_id,
-        command
-      )
+      const result =
+        await sendPrinterCommand(
+          printer.device_id,
+          command
+        )
+
+      if (result.status) {
+        setCommandStatus(
+          result.status
+        )
+      }
 
       if (onChanged) {
         await onChanged()

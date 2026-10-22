@@ -100,5 +100,6 @@ export function usePrinterDetail(
     alerts,
     loading,
     error,
+    refresh,
   }
 }

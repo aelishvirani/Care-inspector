@@ -1464,3 +1464,13 @@ from .device_configuration import (
 app.include_router(
     device_configuration_router
 )
+
+
+# Printer control API / collector control channel
+from .printer_control import (
+    router as printer_control_router,
+)
+
+app.include_router(
+    printer_control_router
+)

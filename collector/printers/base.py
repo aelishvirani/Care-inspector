@@ -16,6 +16,28 @@ class PrinterDriver(ABC):
         """Connect to the printer or simulator."""
         raise NotImplementedError
 
+    async def start(self) -> Dict[str, Any]:
+        """
+        Start printer operation.
+
+        Vendor drivers translate this normalized command into the
+        manufacturer-specific protocol.
+        """
+        raise NotImplementedError(
+            "Start command is not supported by this printer driver"
+        )
+
+    async def stop(self) -> Dict[str, Any]:
+        """
+        Stop printer operation.
+
+        Vendor drivers translate this normalized command into the
+        manufacturer-specific protocol.
+        """
+        raise NotImplementedError(
+            "Stop command is not supported by this printer driver"
+        )
+
     @abstractmethod
     async def disconnect(self) -> None:
         """Disconnect cleanly."""

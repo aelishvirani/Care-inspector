@@ -24,6 +24,8 @@ class SimulatorPrinter(PrinterDriver):
             port=self.port,
         )
 
+        self._control_status = "ready"
+
     async def connect(self) -> None:
         connected = await self.client.connect()
 
@@ -73,14 +75,23 @@ class SimulatorPrinter(PrinterDriver):
             4: "fault",
         }
 
+        measured_status = status_map.get(
+            status_raw,
+            "unknown",
+        )
+
+        status = (
+            self._control_status
+            if self._control_status
+            in {"stopped", "printing"}
+            else measured_status
+        )
+
         return {
             "device_id": self.printer_id,
             "source": "simulator",
             "online": True,
-            "status": status_map.get(
-                status_raw,
-                "unknown",
-            ),
+            "status": status,
             "print_count": print_count,
             "temperature_c": temperature,
             "pressure_mpa": pressure,
@@ -89,4 +100,23 @@ class SimulatorPrinter(PrinterDriver):
             "timestamp": datetime.now(
                 timezone.utc
             ).isoformat(),
+        }
+
+
+    async def start(self) -> Dict[str, Any]:
+        self._control_status = "printing"
+
+        return {
+            "success": True,
+            "status": self._control_status,
+            "message": "Simulator printer started",
+        }
+
+    async def stop(self) -> Dict[str, Any]:
+        self._control_status = "stopped"
+
+        return {
+            "success": True,
+            "status": self._control_status,
+            "message": "Simulator printer stopped",
         }

@@ -71,6 +71,7 @@ def get_configuration(db):
             id=1,
             collector_interval_seconds=5,
             offline_timeout_seconds=15,
+            temperature_low=18.0,
             temperature_high=27.5,
             pressure_low=0.246,
             pressure_high=0.260,
@@ -638,6 +639,10 @@ async def configuration():
                 config
                 .offline_timeout_seconds
             ),
+            "temperature_low": (
+                config.temperature_low
+            ),
+
             "temperature_high": (
                 config.temperature_high
             ),
@@ -687,6 +692,10 @@ async def update_configuration(
             data[
                 "offline_timeout_seconds"
             ]
+        )
+
+        config.temperature_low = float(
+            data["temperature_low"]
         )
 
         config.temperature_high = float(

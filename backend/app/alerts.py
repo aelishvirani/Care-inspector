@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from .audit import log_audit
+from .notifications import notify_new_alert
 from .models import (
     Alert,
     DeviceConfiguration,
@@ -44,6 +45,14 @@ def set_alert(
 
             db.add(alert)
             db.flush()
+
+            notify_new_alert(
+                db,
+                device_id=device_id,
+                alert_type=alert_type,
+                severity=severity,
+                message=message,
+            )
 
             log_audit(
                 db,
@@ -148,10 +157,25 @@ def evaluate_measurement(
         set_alert(
             db,
             device_id=device_id,
+            alert_type="temperature_low",
+            severity="warning",
+            message=(
+                f"Temperature too low: "
+                f"{temperature:.1f} °C"
+            ),
+            active=(
+                temperature
+                < effective_config.temperature_low
+            ),
+        )
+
+        set_alert(
+            db,
+            device_id=device_id,
             alert_type="temperature_high",
             severity="warning",
             message=(
-                f"Temperature high: "
+                f"Temperature too high: "
                 f"{temperature:.1f} °C"
             ),
             active=(
@@ -249,6 +273,17 @@ def evaluate_measurement(
                 makeup < effective_config.makeup_low
             ),
         )
+
+    set_alert(
+        db,
+        device_id=device_id,
+        alert_type="printer_warning",
+        severity="warning",
+        message="Printer reports WARNING status",
+        active=(
+            status == "warning"
+        ),
+    )
 
     set_alert(
         db,

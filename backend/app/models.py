@@ -490,6 +490,11 @@ class Configuration(Base):
         default=15,
     )
 
+    temperature_low: Mapped[float] = mapped_column(
+        Float,
+        default=18.0,
+    )
+
     temperature_high: Mapped[float] = mapped_column(
         Float,
         default=27.5,
@@ -552,6 +557,11 @@ class DeviceConfiguration(Base):
     offline_timeout_seconds: Mapped[int] = mapped_column(
         Integer,
         default=15,
+    )
+
+    temperature_low: Mapped[float] = mapped_column(
+        Float,
+        default=18.0,
     )
 
     temperature_high: Mapped[float] = mapped_column(

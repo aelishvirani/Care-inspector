@@ -325,3 +325,29 @@
   color: #7d8992;
   font-size: 11px;
 }
+
+
+.collector-connection-card {
+  margin-bottom: 22px;
+}
+
+.collector-connection-card .config-fields input,
+.collector-connection-card .config-fields select {
+  width: 220px;
+  height: 39px;
+
+  padding: 0 10px;
+
+  background: #ffffff;
+  border: 1px solid #cbd5da;
+
+  color: #17202a;
+  font-weight: 600;
+}
+
+@media (max-width: 650px) {
+  .collector-connection-card .config-fields input,
+  .collector-connection-card .config-fields select {
+    width: 100%;
+  }
+}

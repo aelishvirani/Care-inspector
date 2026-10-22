@@ -173,9 +173,6 @@ def configuration_payload(
         "temperature_low":
             config.temperature_low,
 
-        "temperature_low":
-            config.temperature_low,
-
         "temperature_high":
             config.temperature_high,
 
@@ -202,6 +199,9 @@ def snapshot_configuration(
 
         "offline_timeout_seconds":
             config.offline_timeout_seconds,
+
+        "temperature_low":
+            config.temperature_low,
 
         "temperature_high":
             config.temperature_high,

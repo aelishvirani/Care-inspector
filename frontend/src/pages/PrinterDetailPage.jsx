@@ -6,6 +6,9 @@ import {
 import PrinterCard
   from '../components/printers/PrinterCard'
 
+import PrinterControlButtons
+  from '../components/printers/PrinterControlButtons'
+
 import MeasurementChart
   from '../components/charts/MeasurementChart'
 
@@ -30,6 +33,7 @@ export default function PrinterDetailPage() {
     alerts,
     loading,
     error,
+    refresh,
   } = usePrinterDetail(
     deviceId
   )
@@ -99,12 +103,13 @@ export default function PrinterDetailPage() {
 
 
         <div
-          style={{
-            display: 'flex',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
+          className="printer-detail-actions"
         >
+          <PrinterControlButtons
+            printer={printer}
+            onChanged={refresh}
+          />
+
 
           <Link
             className="secondary-button"

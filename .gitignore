@@ -14,3 +14,6 @@ data/collector_queue.db
 
 .env
 .env.*
+
+/backups/
+/reviews/

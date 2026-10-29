@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 
 from .auth import get_current_user
+from .group_access import allowed_device_ids
 from .audit import log_audit
 from .database import SessionLocal
 from .models import (
@@ -66,6 +67,15 @@ def require_device_access(
             # Intentionally use 404 rather than 403.
             # This avoids revealing whether another
             # customer's printer exists.
+            raise HTTPException(
+                status_code=404,
+                detail="Printer not found",
+            )
+
+    if user.role == "CUSTOMER":
+        allowed = allowed_device_ids(db, user)
+
+        if device.device_id not in allowed:
             raise HTTPException(
                 status_code=404,
                 detail="Printer not found",
@@ -332,19 +342,14 @@ async def secure_measurements(
             if user.customer_id is None:
                 return []
 
-            allowed_device_ids = (
-                select(
-                    Device.device_id
-                )
-                .where(
-                    Device.customer_id
-                    == user.customer_id
-                )
+            permitted_ids = allowed_device_ids(
+                db,
+                user,
             )
 
             query = query.where(
                 Measurement.device_id.in_(
-                    allowed_device_ids
+                    permitted_ids
                 )
             )
 
@@ -418,19 +423,14 @@ async def secure_alerts(
             if user.customer_id is None:
                 return []
 
-            allowed_device_ids = (
-                select(
-                    Device.device_id
-                )
-                .where(
-                    Device.customer_id
-                    == user.customer_id
-                )
+            permitted_ids = allowed_device_ids(
+                db,
+                user,
             )
 
             query = query.where(
                 Alert.device_id.in_(
-                    allowed_device_ids
+                    permitted_ids
                 )
             )
 

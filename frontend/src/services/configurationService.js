@@ -1,5 +1,6 @@
 import {
   apiGet,
+  apiPut,
 } from '../api/client'
 
 
@@ -8,30 +9,11 @@ export function getConfiguration() {
 }
 
 
-export async function updateConfiguration(
+export function updateConfiguration(
   configuration
 ) {
-  const response = await fetch(
-    '/api/configuration',
-    {
-      method: 'PUT',
-
-      headers: {
-        'Content-Type':
-          'application/json',
-      },
-
-      body: JSON.stringify(
-        configuration
-      ),
-    }
+  return apiPut(
+    '/configuration',
+    configuration
   )
-
-  if (!response.ok) {
-    throw new Error(
-      'Configuration update failed'
-    )
-  }
-
-  return response.json()
 }

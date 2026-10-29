@@ -24,6 +24,8 @@ from .audit_middleware import (
 
 from .alerts import evaluate_measurement, set_alert
 from .database import Base, SessionLocal, engine
+from . import device_groups  # Register group models
+from .group_access import allowed_device_ids
 from .models import (
     Alert,
     Configuration,
@@ -233,11 +235,24 @@ async def health():
 
 
 @app.get("/api/devices")
-async def devices():
+async def devices(
+    user: User = Depends(get_current_user),
+):
     with SessionLocal() as db:
+        permitted_ids = allowed_device_ids(db, user)
+        if permitted_ids is not None:
+            allowed_filter = permitted_ids
+        else:
+            allowed_filter = None
+        query = select(Device)
+
+        if allowed_filter is not None:
+            query = query.where(
+                Device.device_id.in_(allowed_filter)
+            )
+
         rows = db.scalars(
-            select(Device)
-            .order_by(Device.device_id)
+            query.order_by(Device.device_id)
         ).all()
 
         customers = db.scalars(
@@ -350,6 +365,8 @@ async def measurements(
     device_id: str | None = None,
     from_time: datetime | None = None,
     to_time: datetime | None = None,
+
+    user: User = Depends(get_current_user),
 ):
     limit = max(
         1,
@@ -357,7 +374,14 @@ async def measurements(
     )
 
     with SessionLocal() as db:
-        query = select(Measurement)
+        permitted_ids = allowed_device_ids(db, user)
+        if permitted_ids is not None:
+            allowed_filter = permitted_ids
+        else:
+            allowed_filter = None
+        query = select(Measurement).where(
+                Measurement.device_id.in_(allowed_filter)
+            ) if allowed_filter is not None else select(Measurement)
 
         if device_id:
             query = query.where(
@@ -461,6 +485,8 @@ async def measurements(
 )
 async def latest_measurements(
     limit: int = 20,
+
+    user: User = Depends(get_current_user),
 ):
     limit = max(
         1,
@@ -468,14 +494,22 @@ async def latest_measurements(
     )
 
     with SessionLocal() as db:
-        rows = db.scalars(
-            select(Measurement)
-            .order_by(
-                desc(
-                    Measurement.timestamp
-                )
+        permitted_ids = allowed_device_ids(db, user)
+        if permitted_ids is not None:
+            allowed_filter = permitted_ids
+        else:
+            allowed_filter = None
+        query = select(Measurement)
+
+        if allowed_filter is not None:
+            query = query.where(
+                Measurement.device_id.in_(allowed_filter)
             )
-            .limit(limit)
+
+        rows = db.scalars(
+            query.order_by(
+                desc(Measurement.timestamp)
+            ).limit(limit)
         ).all()
 
         return [
@@ -514,6 +548,8 @@ async def alerts(
     status: str | None = None,
     severity: str | None = None,
     device_id: str | None = None,
+
+    user: User = Depends(get_current_user),
 ):
     limit = max(
         1,
@@ -521,7 +557,14 @@ async def alerts(
     )
 
     with SessionLocal() as db:
-        query = select(Alert)
+        permitted_ids = allowed_device_ids(db, user)
+        if permitted_ids is not None:
+            allowed_filter = permitted_ids
+        else:
+            allowed_filter = None
+        query = select(Alert).where(
+                Alert.device_id.in_(allowed_filter)
+            ) if allowed_filter is not None else select(Alert)
 
         if status == "active":
             query = query.where(
@@ -587,14 +630,26 @@ async def alerts(
 @app.get(
     "/api/alerts/active"
 )
-async def active_alerts():
+async def active_alerts(
+    user: User = Depends(get_current_user),
+):
     with SessionLocal() as db:
-        rows = db.scalars(
-            select(Alert)
-            .where(
-                Alert.active.is_(True)
+        permitted_ids = allowed_device_ids(db, user)
+        if permitted_ids is not None:
+            allowed_filter = permitted_ids
+        else:
+            allowed_filter = None
+        query = select(Alert).where(
+            Alert.active.is_(True)
+        )
+
+        if allowed_filter is not None:
+            query = query.where(
+                Alert.device_id.in_(allowed_filter)
             )
-            .order_by(
+
+        rows = db.scalars(
+            query.order_by(
                 desc(Alert.created_at)
             )
         ).all()
@@ -623,10 +678,51 @@ async def active_alerts():
         ]
 
 
+@app.get("/api/collector/configuration")
+async def collector_configuration(request: Request):
+    import os
+    import secrets
+
+    expected_key = os.getenv(
+        "CARE_INSPECTOR_COLLECTOR_KEY", ""
+    )
+    provided_key = request.headers.get(
+        "X-Collector-Key", ""
+    )
+
+    if (
+        not expected_key
+        or len(expected_key) < 32
+        or not secrets.compare_digest(
+            provided_key, expected_key
+        )
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid collector credentials",
+        )
+
+    with SessionLocal() as db:
+        config = get_configuration(db)
+
+        return {
+            "collector_interval_seconds":
+                config.collector_interval_seconds,
+            "printer_mode": config.printer_mode,
+            "printer_host": config.printer_host,
+            "printer_port": config.printer_port,
+            "device_id": config.device_id,
+        }
+
+
 @app.get(
     "/api/configuration"
 )
-async def configuration():
+async def configuration(
+    user: User = Depends(get_current_user),
+):
+    require_technician(user)
+
     with SessionLocal() as db:
         config = get_configuration(db)
 
@@ -678,7 +774,10 @@ async def configuration():
 )
 async def update_configuration(
     data: dict,
+    user: User = Depends(get_current_user),
 ):
+    require_technician(user)
+
     with SessionLocal() as db:
         config = get_configuration(db)
 
@@ -1276,9 +1375,11 @@ async def secure_devices(
             if user.customer_id is None:
                 return []
 
+            allowed = allowed_device_ids(db, user)
+
             query = query.where(
-                Device.customer_id
-                == user.customer_id
+                Device.customer_id == user.customer_id,
+                Device.device_id.in_(allowed),
             )
 
         elif user.role in {
@@ -1448,6 +1549,10 @@ async def secure_customers(
 # Technician management API
 from .management import router as management_router
 app.include_router(management_router)
+
+from .device_groups_api import router as device_groups_router
+app.include_router(device_groups_router)
+
 
 
 # Secure customer/technician data API

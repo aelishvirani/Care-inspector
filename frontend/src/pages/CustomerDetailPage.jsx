@@ -16,6 +16,7 @@ import {
   updateDevice,
 } from '../api/managementApi'
 
+import CustomerDeviceGroups from '../components/management/CustomerDeviceGroups'
 import '../styles/management.css'
 
 
@@ -407,6 +408,11 @@ export default function CustomerDetailPage() {
 
       </section>
 
+
+      <CustomerDeviceGroups
+        customerId={numericCustomerId}
+        printers={customer.printers || []}
+      />
 
       <section className="role-section">
 

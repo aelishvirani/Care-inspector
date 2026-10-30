@@ -25,6 +25,7 @@ from .audit_middleware import (
 from .alerts import evaluate_measurement, set_alert
 from .database import Base, SessionLocal, engine
 from . import device_groups  # Register group models
+from . import printer_connections  # Register connection models
 from .group_access import allowed_device_ids
 from .models import (
     Alert,
@@ -1552,6 +1553,9 @@ app.include_router(management_router)
 
 from .device_groups_api import router as device_groups_router
 app.include_router(device_groups_router)
+
+from .printer_connections_api import router as printer_connections_router
+app.include_router(printer_connections_router)
 
 
 

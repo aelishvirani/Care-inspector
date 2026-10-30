@@ -17,6 +17,9 @@ import {
 } from '../api/managementApi'
 
 import CustomerDeviceGroups from '../components/management/CustomerDeviceGroups'
+import PrinterConnectionForm from '../components/management/PrinterConnectionForm'
+import PrinterConnectionStatus from '../components/management/PrinterConnectionStatus'
+import '../styles/printer-connection-status.css'
 import '../styles/management.css'
 
 
@@ -34,6 +37,9 @@ export default function CustomerDetailPage() {
   const {
     customerId,
   } = useParams()
+
+  const [connectionDeviceId, setConnectionDeviceId] = useState(null)
+  const [connectionRefreshKey, setConnectionRefreshKey] = useState(0)
 
   const numericCustomerId =
     Number(customerId)
@@ -414,6 +420,16 @@ export default function CustomerDetailPage() {
         printers={customer.printers || []}
       />
 
+      {connectionDeviceId && (
+        <PrinterConnectionForm
+          deviceId={connectionDeviceId}
+          onClose={() => {
+            setConnectionDeviceId(null)
+            setConnectionRefreshKey(value => value + 1)
+          }}
+        />
+      )}
+
       <section className="role-section">
 
         <div className="role-section-header">
@@ -691,6 +707,21 @@ export default function CustomerDetailPage() {
                         Open
                       </Link>
 
+
+                      <PrinterConnectionStatus
+                        deviceId={printer.device_id}
+                        refreshKey={connectionRefreshKey}
+                      />
+
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() =>
+                          setConnectionDeviceId(printer.device_id)
+                        }
+                      >
+                        Configure Connection
+                      </button>
 
                       <button
                         className="secondary-button"

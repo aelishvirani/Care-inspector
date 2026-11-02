@@ -18,6 +18,7 @@ from .collectors import RegisteredCollector
 from .database import SessionLocal
 from .models import Customer, User, Device
 from .printer_connections import PrinterConnection
+from .printer_discovery_links import PrinterDiscoveryLink
 
 router = APIRouter(tags=["collectors"])
 
@@ -155,6 +156,8 @@ class PrinterAnnouncement(BaseModel):
     display_name: str | None = Field(default=None, max_length=100)
     manufacturer: str | None = Field(default=None, max_length=100)
     model_name: str | None = Field(default=None, max_length=100)
+    serial_number: str | None = Field(default=None, max_length=120)
+    protocol: str | None = Field(default=None, max_length=80)
 
 
 class DiscoveryAnnouncement(BaseModel):
@@ -190,16 +193,24 @@ def announce_discovered_printers(
         discovered = []
         for info in request.printers:
             existing = db.get(Device, info.device_id)
+            link = db.get(PrinterDiscoveryLink, info.device_id)
             if existing is not None:
-                # Never claim an existing printer for another collector.
-                connection = db.get(PrinterConnection, info.device_id)
-                if connection is None or connection.collector_id != collector.collector_id:
+                # Do not take over manually registered or other collectors' printers.
+                if link is None or link.collector_id != collector.collector_id:
                     discovered.append({"device_id": info.device_id, "status": "already_exists"})
                     continue
+                # Preserve manually edited printer information and GmbH assignment.
+                link.last_reported = collector.last_seen
+                if info.manufacturer:
+                    link.manufacturer = info.manufacturer
+                if info.serial_number:
+                    link.serial_text = info.serial_number
+                if info.protocol:
+                    link.protocol = info.protocol
                 discovered.append({"device_id": info.device_id, "status": "known"})
                 continue
 
-            # Untrusted discovery cannot set a customer, go online, or become controllable.
+            # Discovery cannot assign customers or enable commands.
             db.add(Device(
                 device_id=info.device_id,
                 display_name=info.display_name or info.device_id,
@@ -211,6 +222,15 @@ def announce_discovered_printers(
                 last_seen=collector.last_seen,
                 temperature_c=0,
                 pressure_mpa=0,
+            ))
+            db.add(PrinterDiscoveryLink(
+                device_id=info.device_id,
+                collector_id=collector.collector_id,
+                manufacturer=info.manufacturer,
+                serial_text=info.serial_number,
+                protocol=info.protocol,
+                first_discovered=collector.last_seen,
+                last_reported=collector.last_seen,
             ))
             discovered.append({"device_id": info.device_id, "status": "unassigned"})
         db.commit()

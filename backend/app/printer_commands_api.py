@@ -118,4 +118,64 @@ def remove_printer_command(
         return {"deleted": True}
 
 
-# No POST execution endpoint on purpose. Stored hex is not sent to hardware.
+
+
+@router.post("/{device_id}/commands/{command_id}/test")
+def test_printer_command(
+    device_id: str,
+    command_id: int,
+    user: User = Depends(get_current_user),
+):
+    """Audit-only dry run. NEVER sends command bytes or contacts a collector."""
+    require_technician(user)
+
+    with SessionLocal() as db:
+        device = db.get(Device, device_id)
+        if device is None:
+            raise HTTPException(status_code=404, detail="Printer not found")
+
+        command = db.get(PrinterCommand, command_id)
+        if command is None or command.device_id != device_id:
+            raise HTTPException(status_code=404, detail="Command not found for printer")
+
+        if not device.online:
+            raise HTTPException(status_code=409, detail="Printer is offline")
+
+        # Validate the stored definition before recording the dry run.
+        code = command.hex_code
+        if (
+            not code
+            or len(code) % 2
+            or len(code) > 512
+            or not HEX_PATTERN.fullmatch(code)
+        ):
+            raise HTTPException(status_code=400, detail="Invalid stored hex code")
+
+        log_audit(
+            db,
+            user=user,
+            category="PRINTER_CONTROL",
+            action="PRINTER_CUSTOM_COMMAND_TESTED",
+            outcome="SUCCESS",
+            object_type="device",
+            object_id=device_id,
+            details=(
+                f"DRY RUN ONLY: command_id={command.id}, "
+                f"name={command.name}, hex={code}; "
+                "no hardware transmission"
+            ),
+        )
+        db.commit()
+
+        return {
+            "status": "test_success",
+            "mode": "dry_run",
+            "device_id": device_id,
+            "command_id": command.id,
+            "command_name": command.name,
+            "hex_code": code,
+            "transmitted": False,
+            "message": "Test successful. No command was sent to the printer.",
+        }
+
+# Only a dry-run endpoint exists; there is no hardware execution route.

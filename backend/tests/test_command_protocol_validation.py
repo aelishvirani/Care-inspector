@@ -12,6 +12,12 @@ class CommandProtocolValidationTests(unittest.TestCase):
         self.assertFalse(result.executable)
         self.assertIn("register address", result.reason)
 
+    def test_compact_hex_is_valid(self):
+        result = inspect_custom_command("0001", protocol="modbus_tcp")
+        self.assertTrue(result.valid_hex)
+        self.assertEqual(result.byte_count, 2)
+        self.assertFalse(result.executable)
+
     def test_invalid_hex_is_rejected(self):
         for value in ("", "0", "0Z", "0 1", "GG"):
             with self.subTest(value=value):

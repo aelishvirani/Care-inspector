@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useState,
 } from 'react'
 
@@ -9,6 +10,8 @@ import {
 import {
   useAuth,
 } from '../../auth/AuthContext'
+
+import { getPrinterCommands } from '../../api/printerCommandsApi'
 
 
 function isStarted(
@@ -52,6 +55,21 @@ export default function PrinterControlButtons({
     commandStatus,
     setCommandStatus,
   ] = useState(null)
+
+  const [customCommands, setCustomCommands] = useState([])
+  const [selectedCustomCommand, setSelectedCustomCommand] = useState('')
+
+  useEffect(() => {
+    if (!printer?.device_id || !['ADMIN', 'TECHNICIAN'].includes(user?.role)) {
+      setCustomCommands([])
+      return
+    }
+    let active = true
+    getPrinterCommands(printer.device_id)
+      .then(commands => { if (active) setCustomCommands(commands) })
+      .catch(() => { if (active) setCustomCommands([]) })
+    return () => { active = false }
+  }, [printer?.device_id, user?.role])
 
   const status =
     String(
@@ -213,6 +231,31 @@ export default function PrinterControlButtons({
               ? 'Stopping...'
               : '■ Stop'
           }
+        </button>
+
+        <select
+          aria-label={'Custom commands for ' + (printer?.display_name || printer?.device_id)}
+          value={selectedCustomCommand}
+          onChange={event => setSelectedCustomCommand(event.target.value)}
+          onClick={event => event.stopPropagation()}
+          style={{ maxWidth: compact ? 140 : 220 }}
+          title="Saved custom commands; execution is not enabled yet"
+        >
+          <option value="">Commands...</option>
+          {customCommands.map(command => (
+            <option key={command.id} value={String(command.id)}>
+              {command.name}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className="printer-command-button"
+          disabled
+          title="Custom execution requires protocol validation and authorization"
+        >
+          Execute
         </button>
 
       </div>

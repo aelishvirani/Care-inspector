@@ -16,7 +16,6 @@ import {
 import '../styles/printer-configuration.css'
 
 import PrinterCommandManager from '../components/printers/PrinterCommandManager'
-import CollectorManager from '../components/management/CollectorManager'
 
 
 function printerLabel(printer) {
@@ -634,8 +633,6 @@ export default function ConfigurationPage() {
         )
       }
 
-
-      <CollectorManager />
 
       <section className="printer-selector-panel">
 

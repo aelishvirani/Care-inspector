@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import '../styles/management.css'
 
-// This must match the Bluetooth advertisement name in the future Pi agent.
-const PI_NAME_PREFIX = 'CareInspector-'
-
 export default function RaspberryPiPage() {
   const [devices, setDevices] = useState([])
   const [selected, setSelected] = useState(null)
@@ -22,15 +19,15 @@ export default function RaspberryPiPage() {
     try {
       // A browser permission picker, not a silent scan of nearby MAC addresses.
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ namePrefix: PI_NAME_PREFIX }],
+        acceptAllDevices: true,
       })
-      const item = { id: device.id, name: device.name || 'Care-Inspector Raspberry Pi', bluetooth: device }
+      const item = { id: device.id, name: device.name || 'Unnamed Bluetooth device', bluetooth: device }
       setDevices(previous => {
         const others = previous.filter(entry => entry.id !== item.id)
         return [...others, item]
       })
       setSelected(item)
-      setMessage('Nearby Raspberry Pi selected. Secure pairing is not implemented yet.')
+      setMessage('Bluetooth device selected. Raspberry Pi identity is not verified; secure pairing is not implemented yet.')
     } catch (err) {
       if (err.name !== 'NotFoundError') {
         setError(err.message || 'Bluetooth discovery failed')
@@ -58,8 +55,8 @@ export default function RaspberryPiPage() {
         <div className="role-section-header">
           <div>
             <h2>Nearby Raspberry Pis</h2>
-            <p>Chrome will ask you to select a nearby device advertising the
-              { ' ' }CareInspector- name. No cloud-wide device list is shown.</p>
+            <p>Chrome will show its Bluetooth device picker without a name filter.
+              Selecting a device does not verify or pair it with Care-Inspector.</p>
           </div>
           <div className="role-section-count">{devices.length}</div>
         </div>
@@ -67,8 +64,8 @@ export default function RaspberryPiPage() {
         {message && <p role="status" style={{ padding: 16 }}>{message}</p>}
         {!devices.length && (
           <div className="empty-state">
-            No Raspberry Pi selected. Power on a Pi running the Bluetooth
-            advertising agent, then click Search Nearby.
+            No device selected. Power on the Raspberry Pi with Bluetooth enabled,
+            then click Search Nearby. Our Pi verification service is still being developed.
           </div>
         )}
         <div className="management-printer-list">
@@ -76,7 +73,7 @@ export default function RaspberryPiPage() {
             <div key={device.id} className="management-printer-row">
               <div>
                 <strong>{device.name}</strong>
-                <span>Nearby via Bluetooth · Not paired</span>
+                <span>Selected Bluetooth device · Unverified</span>
               </div>
               <div className="management-row-actions">
                 <button type="button" className="secondary-button"
@@ -104,7 +101,7 @@ export default function RaspberryPiPage() {
             <p><strong>Browser device ID:</strong> {selected.id}</p>
             <p><strong>Bluetooth MAC:</strong> Not accessible through Chrome Web Bluetooth</p>
             <p><strong>Model, hostname and network:</strong> Awaiting verified Pi agent response</p>
-            <p><strong>Status:</strong> Selected, not paired</p>
+            <p><strong>Status:</strong> Selected, not verified or paired</p>
           </div>
         </section>
       )}

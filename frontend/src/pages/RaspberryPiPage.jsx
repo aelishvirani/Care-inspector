@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCollectors } from '../api/collectorsApi'
+import { apiGet } from '../api/client'
 import '../styles/management.css'
 
 export default function RaspberryPiPage() {
@@ -12,7 +12,8 @@ export default function RaspberryPiPage() {
     setLoading(true)
     setError('')
     try {
-      setDevices(await getCollectors())
+      const result = await apiGet('/secure/management/raspberry-pis/nearby')
+      setDevices(result.devices)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -32,7 +33,7 @@ export default function RaspberryPiPage() {
         </div>
         <button className="management-primary-button" type="button"
           disabled={loading} onClick={refresh}>
-          {loading ? 'Refreshing...' : 'Refresh Devices'}
+          {loading ? 'Refreshing...' : 'Discover Nearby'}
         </button>
       </div>
 
@@ -40,8 +41,8 @@ export default function RaspberryPiPage() {
         <div className="role-section-header">
           <div>
             <h2>Raspberry Pi Devices</h2>
-            <p>Nearby scanning and one-click pairing require a Pi discovery agent.
-              They are not active yet. This list shows existing collector records only.</p>
+            <p>Only Raspberry Pis advertising Care-Inspector on the backend's local network appear here.
+              Pairing is not enabled yet.</p>
           </div>
           <div className="role-section-count">{devices.length}</div>
         </div>
@@ -49,19 +50,19 @@ export default function RaspberryPiPage() {
         {error && <p role="alert" className="error-banner">{error}</p>}
         {!loading && !devices.length && !error && (
           <div className="empty-state">
-            No Raspberry Pi devices registered. Nearby discovery is not available yet.
+            No nearby Care-Inspector Raspberry Pis discovered. Run the Pi discovery agent on the same network.
           </div>
         )}
         <div className="management-printer-list">
           {devices.map(device => (
-            <div key={device.collector_id} className="management-printer-row">
+            <div key={device.service_name} className="management-printer-row">
               <div>
-                <strong>{device.name}</strong>
+                <strong>{device.display_name}</strong>
                 <span>{device.collector_id}</span>
               </div>
               <div>
                 <span>Status</span>
-                <strong>{device.last_seen ? 'Previously authenticated' : 'Not connected'}</strong>
+                <strong>{'Nearby · Not paired'}</strong>
               </div>
               <div className="management-row-actions">
                 <button type="button" className="secondary-button"
@@ -87,12 +88,12 @@ export default function RaspberryPiPage() {
           </div>
           <div style={{ padding: 16 }}>
             <p><strong>Name:</strong> {selected.name}</p>
-            <p><strong>Collector ID:</strong> {selected.collector_id}</p>
-            <p><strong>Customer:</strong> {selected.customer_id ?? 'Not assigned'}</p>
-            <p><strong>Last authenticated:</strong> {selected.last_seen || 'Never'}</p>
-            <p><strong>MAC address:</strong> Not yet reported</p>
+            <p><strong>Collector ID:</strong> {selected.service_name}</p>
+            <p><strong>Hostname:</strong> {selected.hostname}</p>
+            <p><strong>Network IP:</strong> {(selected.ip_addresses || []).join(', ')}</p>
+            <p><strong>MAC address:</strong> {selected.mac_address || 'Not reported'}</p>
             <p><strong>Model and hostname:</strong> Not yet reported</p>
-            <p>Hardware details will be available when the Pi discovery agent is installed.</p>
+            <p>Discovered information is unverified until secure pairing is implemented.</p>
           </div>
         </section>
       )}

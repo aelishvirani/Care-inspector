@@ -30,11 +30,17 @@ def inspect_custom_command(
     register address, data type, unit ID, and approved command semantics
     before any operation can be enabled.
     """
-    normalized = "".join((hex_code or "").split()).upper()
+    parts = (hex_code or "").split()
+    normalized = "".join(parts).upper()
     label = protocol or "unconfigured"
 
+    # Each whitespace-separated group must represent complete bytes.
+    # 0001 and 00 01 are valid; 0 1 is not.
+    complete_parts = bool(parts) and all(len(part) % 2 == 0 for part in parts)
+
     if (
-        not normalized
+        not complete_parts
+        or not normalized
         or len(normalized) % 2 != 0
         or len(normalized) > 512
         or HEX_RE.fullmatch(normalized) is None

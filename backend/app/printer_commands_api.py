@@ -66,7 +66,8 @@ def add_printer_command(
     cleaned_hex = "".join(payload.hex_code.split()).upper()
     if not name:
         raise HTTPException(status_code=400, detail="Command name is required")
-    if len(cleaned_hex) % 2 or not HEX_PATTERN.fullmatch(cleaned_hex):
+    syntax = inspect_custom_command(payload.hex_code)
+    if not syntax.valid_hex:
         raise HTTPException(
             status_code=400,
             detail="Hex code must contain complete bytes (0-9, A-F)",

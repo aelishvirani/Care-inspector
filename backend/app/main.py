@@ -1565,6 +1565,9 @@ app.include_router(printer_commands_router)
 from .collectors_api import router as collectors_router
 app.include_router(collectors_router)
 
+from .pi_discovery import router as pi_discovery_router
+app.include_router(pi_discovery_router)
+
 
 
 # Secure customer/technician data API

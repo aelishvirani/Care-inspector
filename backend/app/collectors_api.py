@@ -147,3 +147,76 @@ def collector_assigned_printers(
                 "monitoring_enabled": False,
             })
         return {"collector_id": row.collector_id, "printers": printers}
+
+
+class PrinterAnnouncement(BaseModel):
+    """Information detected by an authenticated Pi, never by an anonymous MAC."""
+    device_id: str = Field(min_length=3, max_length=100)
+    display_name: str | None = Field(default=None, max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model_name: str | None = Field(default=None, max_length=100)
+
+
+class DiscoveryAnnouncement(BaseModel):
+    mac_address: str
+    printers: list[PrinterAnnouncement] = Field(default_factory=list, max_length=30)
+
+
+MAC_RE = re.compile(r"^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$")
+DEVICE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{2,99}$")
+
+
+@router.post("/api/collector/discover")
+def announce_discovered_printers(
+    request: DiscoveryAnnouncement,
+    x_collector_id: str | None = Header(default=None),
+    x_collector_token: str | None = Header(default=None),
+):
+    """Autocreate *unassigned* inventory from an already enrolled collector.
+
+    This endpoint cannot enable a connection or send commands. The MAC is
+    informative only, not a credential. Future Pi agent performs local probing.
+    """
+    mac = request.mac_address.strip().lower().replace("-", ":")
+    if not MAC_RE.fullmatch(mac):
+        raise HTTPException(400, "Invalid network MAC address")
+    ids = [p.device_id for p in request.printers]
+    if len(ids) != len(set(ids)) or any(not DEVICE_RE.fullmatch(x) for x in ids):
+        raise HTTPException(400, "Invalid or duplicate printer device IDs")
+
+    with SessionLocal() as db:
+        collector = authenticate_collector(x_collector_id, x_collector_token, db)
+        collector.last_seen = datetime.now(timezone.utc)
+        discovered = []
+        for info in request.printers:
+            existing = db.get(Device, info.device_id)
+            if existing is not None:
+                # Never claim an existing printer for another collector.
+                connection = db.get(PrinterConnection, info.device_id)
+                if connection is None or connection.collector_id != collector.collector_id:
+                    discovered.append({"device_id": info.device_id, "status": "already_exists"})
+                    continue
+                discovered.append({"device_id": info.device_id, "status": "known"})
+                continue
+
+            # Untrusted discovery cannot set a customer, go online, or become controllable.
+            db.add(Device(
+                device_id=info.device_id,
+                display_name=info.display_name or info.device_id,
+                customer_id=None,
+                model_name=info.model_name,
+                source="discovered",
+                online=False,
+                status="pending_assignment",
+                last_seen=collector.last_seen,
+                temperature_c=0,
+                pressure_mpa=0,
+            ))
+            discovered.append({"device_id": info.device_id, "status": "unassigned"})
+        db.commit()
+        return {
+            "collector_id": collector.collector_id,
+            "mac_address": mac,
+            "printers": discovered,
+            "controls_enabled": False,
+        }

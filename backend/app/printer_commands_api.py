@@ -9,6 +9,8 @@ from .auth import get_current_user, require_technician
 from .database import SessionLocal
 from .models import Device, User
 from .printer_commands import PrinterCommand
+from .printer_connections import PrinterConnection
+from .command_protocol_validation import inspect_custom_command
 
 router = APIRouter(
     prefix="/api/secure/management/devices",
@@ -179,3 +181,33 @@ def test_printer_command(
         }
 
 # Only a dry-run endpoint exists; there is no hardware execution route.
+
+
+@router.get("/{device_id}/commands/{command_id}/preview")
+def preview_printer_command(
+    device_id: str,
+    command_id: int,
+    user: User = Depends(get_current_user),
+):
+    """Read-only command capability preview, no hardware or collector contact."""
+    require_technician(user)
+    with SessionLocal() as db:
+        verify_device(db, device_id)
+        command = db.get(PrinterCommand, command_id)
+        if command is None or command.device_id != device_id:
+            raise HTTPException(status_code=404, detail="Command not found for printer")
+
+        connection = db.get(PrinterConnection, device_id)
+        protocol = connection.protocol if connection else None
+        inspection = inspect_custom_command(command.hex_code, protocol=protocol)
+        return {
+            "device_id": device_id,
+            "command_id": command.id,
+            "command_name": command.name,
+            "protocol": inspection.protocol,
+            "valid_hex": inspection.valid_hex,
+            "byte_count": inspection.byte_count,
+            "executable": inspection.executable,
+            "reason": inspection.reason,
+            "transmitted": False,
+        }

@@ -28,6 +28,7 @@ from . import device_groups  # Register group models
 from . import printer_connections  # Register connection models
 from . import printer_commands  # Register command models
 from . import collectors  # Register collector identities
+from . import printer_discovery_links  # Persist Pi-to-printer inventory
 from .group_access import allowed_device_ids
 from .models import (
     Alert,

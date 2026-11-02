@@ -58,7 +58,7 @@ export default function RaspberryPiPage() {
             <div key={device.service_name} className="management-printer-row">
               <div>
                 <strong>{device.display_name}</strong>
-                <span>{device.collector_id}</span>
+                <span>{device.hostname || device.service_name}</span>
               </div>
               <div>
                 <span>Status</span>
@@ -66,7 +66,7 @@ export default function RaspberryPiPage() {
               </div>
               <div className="management-row-actions">
                 <button type="button" className="secondary-button"
-                  onClick={() => setSelected(device)} aria-label={`Info for ${device.name}`}>
+                  onClick={() => setSelected(device)} aria-label={`Info for ${device.display_name}`}>
                   ⓘ Info
                 </button>
                 <button type="button" className="management-primary-button" disabled
@@ -87,12 +87,12 @@ export default function RaspberryPiPage() {
               onClick={() => setSelected(null)}>Close</button>
           </div>
           <div style={{ padding: 16 }}>
-            <p><strong>Name:</strong> {selected.name}</p>
-            <p><strong>Collector ID:</strong> {selected.service_name}</p>
+            <p><strong>Name:</strong> {selected.display_name}</p>
+            <p><strong>Discovery service:</strong> {selected.service_name}</p>
             <p><strong>Hostname:</strong> {selected.hostname}</p>
             <p><strong>Network IP:</strong> {(selected.ip_addresses || []).join(', ')}</p>
             <p><strong>MAC address:</strong> {selected.mac_address || 'Not reported'}</p>
-            <p><strong>Model and hostname:</strong> Not yet reported</p>
+            <p><strong>Device model / architecture:</strong> {selected.model || 'Not reported'}</p>
             <p>Discovered information is unverified until secure pairing is implemented.</p>
           </div>
         </section>

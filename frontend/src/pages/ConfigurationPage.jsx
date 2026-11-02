@@ -15,6 +15,8 @@ import {
 
 import '../styles/printer-configuration.css'
 
+import PrinterCommandManager from '../components/printers/PrinterCommandManager'
+
 
 function printerLabel(printer) {
   const name =
@@ -631,6 +633,8 @@ export default function ConfigurationPage() {
         )
       }
 
+
+      <PrinterCommandManager printers={printers} />
 
       <section className="printer-selector-panel">
 

@@ -11,7 +11,7 @@ import {
   useAuth,
 } from '../../auth/AuthContext'
 
-import { getPrinterCommands } from '../../api/printerCommandsApi'
+import { getPrinterCommands, testPrinterCommand } from '../../api/printerCommandsApi'
 
 
 function isStarted(
@@ -58,6 +58,7 @@ export default function PrinterControlButtons({
 
   const [customCommands, setCustomCommands] = useState([])
   const [selectedCustomCommand, setSelectedCustomCommand] = useState('')
+  const [testResult, setTestResult] = useState('')
 
   useEffect(() => {
     if (!printer?.device_id || !['ADMIN', 'TECHNICIAN'].includes(user?.role)) {
@@ -65,6 +66,8 @@ export default function PrinterControlButtons({
       return
     }
     let active = true
+    setSelectedCustomCommand('')
+    setTestResult('')
     getPrinterCommands(printer.device_id)
       .then(commands => { if (active) setCustomCommands(commands) })
       .catch(() => { if (active) setCustomCommands([]) })
@@ -161,6 +164,32 @@ export default function PrinterControlButtons({
   }
 
 
+  async function runTestCommand() {
+    const command = customCommands.find(
+      item => String(item.id) === selectedCustomCommand
+    )
+    if (!command || pending !== null || !online) return
+
+    const confirmed = window.confirm(
+      'Test "' + command.name + '" on ' +
+      (printer.display_name || printer.device_id) +
+      '? This is a DRY RUN. No command bytes will be sent.'
+    )
+    if (!confirmed) return
+
+    setPending('test')
+    setError('')
+    setTestResult('')
+    try {
+      const result = await testPrinterCommand(printer.device_id, command.id)
+      setTestResult(result.message || 'Dry-run completed without transmission.')
+    } catch (err) {
+      setError(err.message || 'Dry-run failed')
+    } finally {
+      setPending(null)
+    }
+  }
+
   return (
     <div
       className={
@@ -239,7 +268,7 @@ export default function PrinterControlButtons({
           onChange={event => setSelectedCustomCommand(event.target.value)}
           onClick={event => event.stopPropagation()}
           style={{ maxWidth: compact ? 140 : 220 }}
-          title="Saved custom commands; execution is not enabled yet"
+          title="Select a command for a safe dry-run test"
         >
           <option value="">Commands...</option>
           {customCommands.map(command => (
@@ -252,10 +281,11 @@ export default function PrinterControlButtons({
         <button
           type="button"
           className="printer-command-button"
-          disabled
-          title="Custom execution requires protocol validation and authorization"
+          disabled={!online || !selectedCustomCommand || pending !== null}
+          onClick={runTestCommand}
+          title="Audit-only test. No bytes are sent to any printer."
         >
-          Execute
+          {pending === 'test' ? 'Testing...' : 'Test Execute'}
         </button>
 
       </div>
@@ -269,6 +299,12 @@ export default function PrinterControlButtons({
           </div>
         )
       }
+
+      {testResult && (
+        <div role="status" className="printer-control-success">
+          {testResult}
+        </div>
+      )}
 
     </div>
   )

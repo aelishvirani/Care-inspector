@@ -61,7 +61,7 @@ def add_printer_command(
 ):
     require_technician(user)
     name = payload.name.strip()
-    cleaned_hex = re.sub(r"\\s+", "", payload.hex_code).upper()
+    cleaned_hex = "".join(payload.hex_code.split()).upper()
     if not name:
         raise HTTPException(status_code=400, detail="Command name is required")
     if len(cleaned_hex) % 2 or not HEX_PATTERN.fullmatch(cleaned_hex):

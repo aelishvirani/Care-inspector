@@ -24,3 +24,6 @@ export async function deletePrinterCommand(deviceId, commandId) {
   }
   return response.json()
 }
+
+export const testPrinterCommand = (deviceId, commandId) =>
+  apiPost(`${pathFor(deviceId)}/${encodeURIComponent(commandId)}/test`, {})

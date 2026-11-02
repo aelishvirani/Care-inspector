@@ -58,6 +58,9 @@ import ConfigurationPage
 import UnassignedDevicesPage
   from '../pages/UnassignedDevicesPage'
 
+import RaspberryPiPage
+  from '../pages/RaspberryPiPage'
+
 import CustomersPage
   from '../pages/CustomersPage'
 
@@ -334,6 +337,15 @@ function RouterContent() {
           }
         />
 
+
+        <Route
+          path="/raspberry-pi"
+          element={
+            <ProtectedRoute roles={['TECHNICIAN', 'ADMIN']}>
+              <RaspberryPiPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/unassigned"

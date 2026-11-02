@@ -1,76 +1,90 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../api/client'
+import { useState } from 'react'
 import '../styles/management.css'
+
+// This must match the Bluetooth advertisement name in the future Pi agent.
+const PI_NAME_PREFIX = 'CareInspector-'
 
 export default function RaspberryPiPage() {
   const [devices, setDevices] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  async function refresh() {
-    setLoading(true)
+  async function discoverNearby() {
     setError('')
+    setMessage('')
+    if (!window.isSecureContext || !navigator.bluetooth?.requestDevice) {
+      setError('Nearby Bluetooth discovery requires Chrome with Bluetooth access on HTTPS or localhost.')
+      return
+    }
+    setLoading(true)
     try {
-      const result = await apiGet('/secure/management/raspberry-pis/nearby')
-      setDevices(result.devices)
+      // A browser permission picker, not a silent scan of nearby MAC addresses.
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: PI_NAME_PREFIX }],
+      })
+      const item = { id: device.id, name: device.name || 'Care-Inspector Raspberry Pi', bluetooth: device }
+      setDevices(previous => {
+        const others = previous.filter(entry => entry.id !== item.id)
+        return [...others, item]
+      })
+      setSelected(item)
+      setMessage('Nearby Raspberry Pi selected. Secure pairing is not implemented yet.')
     } catch (err) {
-      setError(err.message)
+      if (err.name !== 'NotFoundError') {
+        setError(err.message || 'Bluetooth discovery failed')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { refresh() }, [])
-
   return (
     <div className="role-dashboard">
       <div className="role-dashboard-header">
         <div>
-          <span className="role-dashboard-eyebrow">Hardware pairing</span>
+          <span className="role-dashboard-eyebrow">Nearby hardware</span>
           <h1>Raspberry Pi</h1>
-          <p>Discover, identify, and securely pair Raspberry Pi collectors.</p>
+          <p>Find Care-Inspector Raspberry Pis near this laptop using Bluetooth.</p>
         </div>
         <button className="management-primary-button" type="button"
-          disabled={loading} onClick={refresh}>
-          {loading ? 'Refreshing...' : 'Discover Nearby'}
+          disabled={loading} onClick={discoverNearby}>
+          {loading ? 'Searching...' : 'Search Nearby'}
         </button>
       </div>
 
       <section className="role-section">
         <div className="role-section-header">
           <div>
-            <h2>Raspberry Pi Devices</h2>
-            <p>Only Raspberry Pis advertising Care-Inspector on the backend's local network appear here.
-              Pairing is not enabled yet.</p>
+            <h2>Nearby Raspberry Pis</h2>
+            <p>Chrome will ask you to select a nearby device advertising the
+              { ' ' }CareInspector- name. No cloud-wide device list is shown.</p>
           </div>
           <div className="role-section-count">{devices.length}</div>
         </div>
-
         {error && <p role="alert" className="error-banner">{error}</p>}
-        {!loading && !devices.length && !error && (
+        {message && <p role="status" style={{ padding: 16 }}>{message}</p>}
+        {!devices.length && (
           <div className="empty-state">
-            No nearby Care-Inspector Raspberry Pis discovered. Run the Pi discovery agent on the same network.
+            No Raspberry Pi selected. Power on a Pi running the Bluetooth
+            advertising agent, then click Search Nearby.
           </div>
         )}
         <div className="management-printer-list">
           {devices.map(device => (
-            <div key={device.service_name} className="management-printer-row">
+            <div key={device.id} className="management-printer-row">
               <div>
-                <strong>{device.display_name}</strong>
-                <span>{device.hostname || device.service_name}</span>
-              </div>
-              <div>
-                <span>Status</span>
-                <strong>{'Nearby · Not paired'}</strong>
+                <strong>{device.name}</strong>
+                <span>Nearby via Bluetooth · Not paired</span>
               </div>
               <div className="management-row-actions">
                 <button type="button" className="secondary-button"
-                  onClick={() => setSelected(device)} aria-label={`Info for ${device.display_name}`}>
+                  onClick={() => setSelected(device)}>
                   ⓘ Info
                 </button>
-                <button type="button" className="management-primary-button" disabled
-                  title="Secure local pairing is not implemented yet">
+                <button type="button" className="management-primary-button"
+                  disabled title="Secure pairing and cloud enrollment must be implemented first">
                   Connect
                 </button>
               </div>
@@ -78,7 +92,6 @@ export default function RaspberryPiPage() {
           ))}
         </div>
       </section>
-
       {selected && (
         <section className="role-section" aria-label="Raspberry Pi details">
           <div className="role-section-header">
@@ -87,13 +100,11 @@ export default function RaspberryPiPage() {
               onClick={() => setSelected(null)}>Close</button>
           </div>
           <div style={{ padding: 16 }}>
-            <p><strong>Name:</strong> {selected.display_name}</p>
-            <p><strong>Discovery service:</strong> {selected.service_name}</p>
-            <p><strong>Hostname:</strong> {selected.hostname}</p>
-            <p><strong>Network IP:</strong> {(selected.ip_addresses || []).join(', ')}</p>
-            <p><strong>MAC address:</strong> {selected.mac_address || 'Not reported'}</p>
-            <p><strong>Device model / architecture:</strong> {selected.model || 'Not reported'}</p>
-            <p>Discovered information is unverified until secure pairing is implemented.</p>
+            <p><strong>Advertised name:</strong> {selected.name}</p>
+            <p><strong>Browser device ID:</strong> {selected.id}</p>
+            <p><strong>Bluetooth MAC:</strong> Not accessible through Chrome Web Bluetooth</p>
+            <p><strong>Model, hostname and network:</strong> Awaiting verified Pi agent response</p>
+            <p><strong>Status:</strong> Selected, not paired</p>
           </div>
         </section>
       )}

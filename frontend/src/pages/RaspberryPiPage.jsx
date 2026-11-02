@@ -1,109 +1,163 @@
 import { useState } from 'react'
 import '../styles/management.css'
+import '../styles/raspberry-pi.css'
 
 export default function RaspberryPiPage() {
   const [devices, setDevices] = useState([])
-  const [selected, setSelected] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
+  const [details, setDetails] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
   async function discoverNearby() {
+    setNotice('')
     setError('')
-    setMessage('')
     if (!window.isSecureContext || !navigator.bluetooth?.requestDevice) {
-      setError('Nearby Bluetooth discovery requires Chrome with Bluetooth access on HTTPS or localhost.')
+      setError('Use Chrome with Bluetooth enabled on HTTPS or localhost to search nearby.')
       return
     }
-    setLoading(true)
+
+    setScanning(true)
     try {
-      // A browser permission picker, not a silent scan of nearby MAC addresses.
-      const device = await navigator.bluetooth.requestDevice({
+      // Chrome controls the mandatory system picker. This is permission to
+      // select a device, NOT pairing or verification of Raspberry Pi identity.
+      const bluetoothDevice = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
       })
-      const item = { id: device.id, name: device.name || 'Unnamed Bluetooth device', bluetooth: device }
-      setDevices(previous => {
-        const others = previous.filter(entry => entry.id !== item.id)
-        return [...others, item]
-      })
-      setSelected(item)
-      setMessage('Bluetooth device selected. Raspberry Pi identity is not verified; secure pairing is not implemented yet.')
+
+      const candidate = {
+        id: bluetoothDevice.id,
+        name: bluetoothDevice.name || 'Unknown Bluetooth device',
+        device: bluetoothDevice,
+        foundAt: new Date().toLocaleTimeString(),
+      }
+
+      setDevices(previous => [
+        candidate,
+        ...previous.filter(item => item.id !== candidate.id),
+      ])
+      setNotice('Device added to the list. Inspect its information before pairing.')
+      setDetails(candidate)
     } catch (err) {
       if (err.name !== 'NotFoundError') {
-        setError(err.message || 'Bluetooth discovery failed')
+        setError(err.message || 'Bluetooth search failed.')
       }
     } finally {
-      setLoading(false)
+      setScanning(false)
     }
   }
 
   return (
-    <div className="role-dashboard">
-      <div className="role-dashboard-header">
+    <div className="role-dashboard pi-page">
+      <div className="role-dashboard-header pi-header">
         <div>
-          <span className="role-dashboard-eyebrow">Nearby hardware</span>
+          <span className="role-dashboard-eyebrow">HARDWARE DISCOVERY</span>
           <h1>Raspberry Pi</h1>
-          <p>Find Care-Inspector Raspberry Pis near this laptop using Bluetooth.</p>
+          <p>Find nearby devices, inspect their identity, and connect them to Care-Inspector.</p>
         </div>
-        <button className="management-primary-button" type="button"
-          disabled={loading} onClick={discoverNearby}>
-          {loading ? 'Searching...' : 'Search Nearby'}
+        <button type="button" className="management-primary-button pi-search-button"
+          disabled={scanning} onClick={discoverNearby}>
+          {scanning ? 'Searching...' : '⌁  Search Nearby'}
         </button>
       </div>
 
-      <section className="role-section">
-        <div className="role-section-header">
-          <div>
-            <h2>Nearby Raspberry Pis</h2>
-            <p>Chrome will show its Bluetooth device picker without a name filter.
-              Selecting a device does not verify or pair it with Care-Inspector.</p>
-          </div>
-          <div className="role-section-count">{devices.length}</div>
+      {error && <div role="alert" className="pi-alert pi-alert-error">{error}</div>}
+      {notice && <div role="status" className="pi-alert pi-alert-info">{notice}</div>}
+
+      <div className="pi-overview">
+        <div className="pi-stat">
+          <span className="pi-stat-label">Selected nearby devices</span>
+          <strong>{devices.length}</strong>
+          <span className="pi-stat-subtitle">From Chrome Bluetooth selection</span>
         </div>
-        {error && <p role="alert" className="error-banner">{error}</p>}
-        {message && <p role="status" style={{ padding: 16 }}>{message}</p>}
-        {!devices.length && (
-          <div className="empty-state">
-            No device selected. Power on the Raspberry Pi with Bluetooth enabled,
-            then click Search Nearby. Our Pi verification service is still being developed.
+        <div className="pi-stat">
+          <span className="pi-stat-label">Verified Raspberry Pis</span>
+          <strong>0</strong>
+          <span className="pi-stat-subtitle">Verification agent not installed yet</span>
+        </div>
+        <div className="pi-stat">
+          <span className="pi-stat-label">Paired to cloud</span>
+          <strong>0</strong>
+          <span className="pi-stat-subtitle">Secure enrollment not available yet</span>
+        </div>
+      </div>
+
+      <section className="pi-devices" aria-labelledby="pi-devices-title">
+        <div className="pi-section-head">
+          <div>
+            <h2 id="pi-devices-title">Nearby Devices</h2>
+            <p>Devices you select in Chrome appear here. Only verified Raspberry Pis will be connectable.</p>
+          </div>
+          <span className="pi-count">{devices.length} selected</span>
+        </div>
+
+        {devices.length === 0 ? (
+          <div className="pi-empty">
+            <div className="pi-empty-symbol" aria-hidden="true">⌁</div>
+            <h3>Ready to find nearby devices</h3>
+            <p>Turn on Bluetooth, then select <strong>Search Nearby</strong>. Chrome will open its required device picker.</p>
+            <p className="pi-muted">Your Raspberry Pi will need the Care-Inspector BLE service for automatic identity verification.</p>
+          </div>
+        ) : (
+          <div className="pi-device-list">
+            {devices.map(item => (
+              <div className="pi-device-row" key={item.id}>
+                <div className="pi-device-icon" aria-hidden="true">⌁</div>
+                <div className="pi-device-copy">
+                  <strong>{item.name}</strong>
+                  <span>Selected at {item.foundAt} · Identity not verified</span>
+                </div>
+                <span className="pi-status">Unverified</span>
+                <div className="pi-actions">
+                  <button className="pi-info-btn" type="button"
+                    onClick={() => setDetails(item)} aria-label={`Information about ${item.name}`}>
+                    ⓘ Info
+                  </button>
+                  <button className="pi-connect-btn" type="button" disabled
+                    title="Available only after secure Raspberry Pi identity verification">
+                    Connect
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-        <div className="management-printer-list">
-          {devices.map(device => (
-            <div key={device.id} className="management-printer-row">
-              <div>
-                <strong>{device.name}</strong>
-                <span>Selected Bluetooth device · Unverified</span>
-              </div>
-              <div className="management-row-actions">
-                <button type="button" className="secondary-button"
-                  onClick={() => setSelected(device)}>
-                  ⓘ Info
-                </button>
-                <button type="button" className="management-primary-button"
-                  disabled title="Secure pairing and cloud enrollment must be implemented first">
-                  Connect
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
-      {selected && (
-        <section className="role-section" aria-label="Raspberry Pi details">
-          <div className="role-section-header">
-            <h2>Device information</h2>
-            <button type="button" className="secondary-button"
-              onClick={() => setSelected(null)}>Close</button>
-          </div>
-          <div style={{ padding: 16 }}>
-            <p><strong>Advertised name:</strong> {selected.name}</p>
-            <p><strong>Browser device ID:</strong> {selected.id}</p>
-            <p><strong>Bluetooth MAC:</strong> Not accessible through Chrome Web Bluetooth</p>
-            <p><strong>Model, hostname and network:</strong> Awaiting verified Pi agent response</p>
-            <p><strong>Status:</strong> Selected, not verified or paired</p>
-          </div>
-        </section>
+
+      <p className="pi-footer-note">For security, choosing a Bluetooth device does not register it, connect it to the backend, or authorize printer commands.</p>
+
+      {details && (
+        <div className="pi-modal-backdrop" role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setDetails(null)
+          }}>
+          <section className="pi-modal" role="dialog" aria-modal="true"
+            aria-labelledby="pi-info-heading">
+            <div className="pi-modal-header">
+              <div>
+                <span className="role-dashboard-eyebrow">DEVICE INFORMATION</span>
+                <h2 id="pi-info-heading">{details.name}</h2>
+              </div>
+              <button className="pi-close" type="button" onClick={() => setDetails(null)}
+                aria-label="Close device information">×</button>
+            </div>
+            <div className="pi-modal-content">
+              <div className="pi-info-row"><span>Bluetooth name</span><strong>{details.name}</strong></div>
+              <div className="pi-info-row"><span>Browser device identifier</span><code>{details.id}</code></div>
+              <div className="pi-info-row"><span>Detected</span><strong>{details.foundAt}</strong></div>
+              <div className="pi-info-row"><span>Device verification</span><strong>Not verified</strong></div>
+              <div className="pi-info-row"><span>MAC address</span><strong>Unavailable from Chrome</strong></div>
+              <div className="pi-info-row"><span>Model / serial number</span><strong>Awaiting Pi BLE identity service</strong></div>
+              <div className="pi-info-row"><span>Cloud connection</span><strong>Not paired</strong></div>
+            </div>
+            <p className="pi-info-explanation">A Bluetooth name is not proof this is a Raspberry Pi. The Connect button will become available after authenticated Pi identification is implemented.</p>
+            <div className="pi-modal-footer">
+              <button className="pi-info-btn" type="button"
+                onClick={() => setDetails(null)}>Close</button>
+              <button className="pi-connect-btn" type="button" disabled>Connect</button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   )

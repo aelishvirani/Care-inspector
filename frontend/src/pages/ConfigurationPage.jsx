@@ -634,8 +634,6 @@ export default function ConfigurationPage() {
       }
 
 
-      <PrinterCommandManager printers={printers} />
-
       <section className="printer-selector-panel">
 
         <div className="printer-selector-heading">
@@ -769,6 +767,9 @@ export default function ConfigurationPage() {
         </div>
 
       </section>
+
+
+      <PrinterCommandManager deviceId={selectedDeviceId} />
 
 
       {

@@ -5,8 +5,7 @@ import {
   getPrinterCommands,
 } from '../../api/printerCommandsApi'
 
-export default function PrinterCommandManager({ printers }) {
-  const [deviceId, setDeviceId] = useState('')
+export default function PrinterCommandManager({ deviceId }) {
   const [commands, setCommands] = useState([])
   const [name, setName] = useState('')
   const [hexCode, setHexCode] = useState('')
@@ -15,13 +14,12 @@ export default function PrinterCommandManager({ printers }) {
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    if (!deviceId && printers.length) setDeviceId(printers[0].device_id)
-  }, [printers, deviceId])
-
-  useEffect(() => {
     let active = true
     setCommands([])
     setError('')
+    setMessage('')
+    setName('')
+    setHexCode('')
     if (deviceId) {
       getPrinterCommands(deviceId)
         .then(result => { if (active) setCommands(result) })
@@ -75,16 +73,6 @@ export default function PrinterCommandManager({ printers }) {
         </div>
       </div>
       <form onSubmit={save} className="config-fields">
-        <label>
-          <span>Printer</span>
-          <select value={deviceId} onChange={e => setDeviceId(e.target.value)} required>
-            {printers.map(p => (
-              <option key={p.device_id} value={p.device_id}>
-                {p.display_name || p.device_id}
-              </option>
-            ))}
-          </select>
-        </label>
         <label>
           <span>Command name</span>
           <input value={name} maxLength={80} required

@@ -16,7 +16,6 @@ import {
 import '../styles/printer-configuration.css'
 
 import PrinterCommandManager from '../components/printers/PrinterCommandManager'
-import PiConfigurationOverview from '../components/PiConfigurationOverview'
 
 
 function printerLabel(printer) {
@@ -769,8 +768,6 @@ export default function ConfigurationPage() {
 
       </section>
 
-
-      <PiConfigurationOverview />
 
       <PrinterCommandManager deviceId={selectedDeviceId} />
 

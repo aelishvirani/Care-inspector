@@ -1,0 +1,20 @@
+[Unit]
+Description=Care-Inspector read-only configured Hitachi discovery and signed inventory
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=careinspector
+Group=careinspector
+WorkingDirectory=/opt/care-inspector
+EnvironmentFile=/etc/care-inspector/pi-cloud.env
+ExecStart=/usr/bin/python3 -m collector.pi_printer_discovery
+TimeoutStartSec=120
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/lib/care-inspector /etc/care-inspector
+
+# Deliberately separate from measurement collection and remote printer control.

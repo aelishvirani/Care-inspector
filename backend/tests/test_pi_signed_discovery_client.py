@@ -60,6 +60,15 @@ class SignedDiscoveryClientTests(unittest.TestCase):
         self.assertEqual([p for p, _ in calls],
                          ["/api/pi-auth/challenge", "/api/pi-discovery/announce"])
 
+    def test_multiple_printers_rejected_without_network(self):
+        second = dict(self.printers[0], device_id="hitachi-ux2-124")
+        with self.assertRaises(ValueError):
+            announce_printers(
+                "https://care.example.org", self.hardware, self.key,
+                self.mac, self.printers + [second],
+                post=lambda *args: self.fail("No cloud calls expected"),
+            )
+
     def test_no_extra_fields_accepted(self):
         with self.assertRaises(ValueError):
             normalize_inventory(self.mac, [{"device_id": "foo", "password": "secret"}])

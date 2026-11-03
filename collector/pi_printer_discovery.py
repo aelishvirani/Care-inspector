@@ -21,8 +21,8 @@ def parse_targets(data: dict) -> list[PrinterTarget]:
     if not isinstance(data, dict) or set(data) != {"printers"}:
         raise ValueError("Expected a JSON object containing only printers")
     raw_targets = data["printers"]
-    if not isinstance(raw_targets, list) or len(raw_targets) > 30:
-        raise ValueError("Expected a list with at most 30 printers")
+    if not isinstance(raw_targets, list) or len(raw_targets) > 1:
+        raise ValueError("Expected a list with at most one printer")
     targets = []
     for item in raw_targets:
         if not isinstance(item, dict):

@@ -32,6 +32,7 @@ from . import printer_discovery_links  # Persist Pi-to-printer inventory
 from . import pi_pairing  # Register short-lived pairing challenges
 from . import pi_enrollment  # Register pending-only Pi enrollment requests
 from . import pi_registered_devices  # Registered Pi keys
+from . import pi_cloud_challenges  # One-time Pi cloud authentication
 from .group_access import allowed_device_ids
 from .models import (
     Alert,
@@ -1580,6 +1581,9 @@ app.include_router(pi_enrollment_router)
 
 from .pi_connect_api import router as pi_connect_router
 app.include_router(pi_connect_router)
+
+from .pi_cloud_auth_api import router as pi_cloud_auth_router
+app.include_router(pi_cloud_auth_router)
 
 
 

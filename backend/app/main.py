@@ -33,6 +33,7 @@ from . import pi_pairing  # Register short-lived pairing challenges
 from . import pi_enrollment  # Register pending-only Pi enrollment requests
 from . import pi_registered_devices  # Registered Pi keys
 from . import pi_cloud_challenges  # One-time Pi cloud authentication
+from . import pi_heartbeat  # Authenticated Pi presence
 from .group_access import allowed_device_ids
 from .models import (
     Alert,

@@ -95,8 +95,15 @@ def main() -> None:
     elif source == "cloud":
         # Deliberate deployment opt-in; never persist cloud targets to disk.
         targets = fetch_remote_targets(backend_url)
+    elif source == "direct-link":
+        # Opt-in only: inspect the existing Linux neighbor table on a dedicated
+        # wired printer interface; never enumerate a subnet.
+        from .pi_direct_link import passive_direct_link_target
+        interface = os.environ.get("CARE_INSPECTOR_PRINTER_INTERFACE", "eth0").strip()
+        target = passive_direct_link_target(interface=interface)
+        targets = [target] if target is not None else []
     else:
-        raise ValueError("Printer config source must be local or cloud")
+        raise ValueError("Printer config source must be local, cloud or direct-link")
     result = discover_configured_hitachi(backend_url, targets)
     # Never print cloud secrets, private keys, IPs, or printer serial numbers.
     print("Printer discovery completed; announced:",

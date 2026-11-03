@@ -1586,6 +1586,9 @@ app.include_router(pi_connect_router)
 from .pi_cloud_auth_api import router as pi_cloud_auth_router
 app.include_router(pi_cloud_auth_router)
 
+from .pi_signed_discovery import router as pi_signed_discovery_router
+app.include_router(pi_signed_discovery_router)
+
 
 
 # Secure customer/technician data API

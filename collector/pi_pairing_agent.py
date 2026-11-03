@@ -8,7 +8,6 @@ from __future__ import annotations
 import base64
 import json
 import os
-import tempfile
 import time
 from pathlib import Path
 from threading import Lock
@@ -18,7 +17,25 @@ from cryptography.hazmat.primitives.serialization import (
     Encoding, NoEncryption, PrivateFormat, PublicFormat,
 )
 
-from backend.app.pi_pairing_crypto import signed_message
+import re
+
+# Keep this agent standalone: no FastAPI/backend dependencies on the Pi.
+DOMAIN = b"care-inspector-pi-pairing-v1\\x00"
+HARDWARE_ID_RE = re.compile(r"^[a-zA-Z0-9:_-]{8,128}$")
+
+
+def signed_message(pairing_id: str, hardware_id: str, challenge_b64: str) -> bytes:
+    if not HARDWARE_ID_RE.fullmatch(hardware_id):
+        raise ValueError("Invalid hardware identifier")
+    if not isinstance(pairing_id, str) or not re.fullmatch(r"[0-9a-fA-F-]{36}", pairing_id):
+        raise ValueError("Invalid pairing identifier")
+    try:
+        challenge = base64.b64decode(challenge_b64, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Invalid challenge encoding") from exc
+    if len(challenge) != 32:
+        raise ValueError("Invalid challenge size")
+    return DOMAIN + pairing_id.encode("ascii") + b"\\x00" + hardware_id.encode("ascii") + b"\\x00" + challenge
 
 # Standard service-account writable directory on the Pi, NOT a Git directory.
 DEFAULT_KEY_PATH = Path("/var/lib/care-inspector/pi-ed25519.key")

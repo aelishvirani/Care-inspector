@@ -34,6 +34,7 @@ from . import pi_enrollment  # Register pending-only Pi enrollment requests
 from . import pi_registered_devices  # Registered Pi keys
 from . import pi_cloud_challenges  # One-time Pi cloud authentication
 from . import pi_heartbeat  # Authenticated Pi presence
+from . import pi_target_config  # Staged per-Pi printer settings
 from .group_access import allowed_device_ids
 from .models import (
     Alert,
@@ -1588,6 +1589,9 @@ app.include_router(pi_cloud_auth_router)
 
 from .pi_signed_discovery import router as pi_signed_discovery_router
 app.include_router(pi_signed_discovery_router)
+
+from .pi_target_config_api import router as pi_target_config_router
+app.include_router(pi_target_config_router)
 
 
 

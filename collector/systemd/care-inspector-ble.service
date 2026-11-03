@@ -1,0 +1,20 @@
+[Unit]
+Description=Care-Inspector Raspberry Pi read-only Bluetooth identity service
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+# Adjust User and Group to your dedicated, least-privilege service account.
+# The account needs permission to use the BlueZ system D-Bus service.
+User=careinspector
+Group=careinspector
+WorkingDirectory=/opt/care-inspector
+ExecStart=/usr/bin/python3 /opt/care-inspector/collector/pi_ble_gatt_server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

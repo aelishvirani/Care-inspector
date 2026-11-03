@@ -29,6 +29,7 @@ from . import printer_connections  # Register connection models
 from . import printer_commands  # Register command models
 from . import collectors  # Register collector identities
 from . import printer_discovery_links  # Persist Pi-to-printer inventory
+from . import pi_pairing  # Register short-lived pairing challenges
 from .group_access import allowed_device_ids
 from .models import (
     Alert,
@@ -1568,6 +1569,9 @@ app.include_router(collectors_router)
 
 from .pi_discovery import router as pi_discovery_router
 app.include_router(pi_discovery_router)
+
+from .pi_pairing_api import router as pi_pairing_router
+app.include_router(pi_pairing_router)
 
 
 

@@ -48,10 +48,10 @@ def authenticate_with_retries(
             if on_authenticated is not None:
                 on_authenticated(result)
             return True
+        except (PermissionError, FileNotFoundError):
+            # Both inherit OSError; reject credentials and missing keys immediately.
+            raise
         except (ConnectionError, TimeoutError, OSError) as exc:
-            # Do not endlessly retry missing configuration/identity files.
-            if isinstance(exc, FileNotFoundError):
-                raise
             if max_attempts is not None and attempt >= max_attempts:
                 return False
             delay = retry_delay(attempt)

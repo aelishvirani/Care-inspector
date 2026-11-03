@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 from backend.app import pi_cloud_auth_api
 from backend.app.pi_cloud_crypto import cloud_message
 from backend.app.pi_cloud_challenges import PiCloudChallenge
+from backend.app.pi_heartbeat import PiHeartbeat
 from backend.app.pi_registered_devices import PiRegisteredDevice
 from backend.app.pi_pairing import PiPairingAttempt
 from backend.app.models import User
@@ -27,7 +28,7 @@ class CloudAuthApiTests(unittest.TestCase):
         )
         # Respect foreign-key dependencies in this isolated SQLite schema.
         # registered_devices -> pairing_attempts -> users.
-        for model in (User, PiPairingAttempt, PiRegisteredDevice, PiCloudChallenge):
+        for model in (User, PiPairingAttempt, PiRegisteredDevice, PiCloudChallenge, PiHeartbeat):
             model.__table__.create(self.engine)
         self.session = sessionmaker(bind=self.engine, autoflush=False)
         self.patch = patch.object(pi_cloud_auth_api, "SessionLocal", self.session)
@@ -80,6 +81,10 @@ class CloudAuthApiTests(unittest.TestCase):
         self.assertTrue(r.json()["authenticated"])
         self.assertFalse(r.json()["collector_access_granted"])
         self.assertFalse(r.json()["cloud_session_issued"])
+        with self.session() as db:
+            heartbeat = db.get(PiHeartbeat, self.hardware_id)
+            self.assertIsNotNone(heartbeat)
+            self.assertIsNotNone(heartbeat.last_authenticated_at)
 
     def test_replay_rejected(self):
         challenge = self.challenge().json()
@@ -92,6 +97,8 @@ class CloudAuthApiTests(unittest.TestCase):
             self.proof(challenge, Ed25519PrivateKey.generate()).status_code, 403
         )
         self.assertEqual(self.proof(challenge).status_code, 409)
+        with self.session() as db:
+            self.assertIsNone(db.get(PiHeartbeat, self.hardware_id))
 
     def test_expired_challenge_rejected(self):
         challenge = self.challenge().json()

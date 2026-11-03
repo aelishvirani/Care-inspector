@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
 import PiTargetEditor from './PiTargetEditor'
+import '../styles/raspberry-pi.css'
 
 /**
- * Read-only overview of registered Raspberry Pis and staged printer targets.
- * No BLE, key management, printer control or configuration writes happen here.
+ * Technician-managed staged target settings, hosted only on Configuration page.
+ * No BLE, key management, printer control or device-side changes happen here.
  */
 export default function PiConfigurationOverview() {
   const [registered, setRegistered] = useState([])

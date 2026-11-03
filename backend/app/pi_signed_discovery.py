@@ -92,25 +92,6 @@ def signed_discovery(request: SignedDiscovery):
 
         # Bound to the authenticated Pi identity, not user-supplied collector ID.
         collector_id = collector_id_for_pi(pi.hardware_id)
-        collector = db.get(RegisteredCollector, collector_id)
-        if collector is None:
-            # No bearer credential is issued or accessible by the Pi through
-            # this route. Preserve old token-based clients independently.
-            collector = RegisteredCollector(
-                collector_id=collector_id,
-                name="Raspberry Pi " + pi.hardware_id[-12:],
-                customer_id=None,
-                token_hash=hashlib.sha256(
-                    ("no-bearer-token:" + pi.hardware_id).encode()
-                ).hexdigest(),
-                enabled=False,
-            )
-            db.add(collector)
-        elif collector.enabled:
-            # Never silently take over a manually managed collector identity.
-            db.rollback()
-            raise HTTPException(409, "Collector identity conflict")
-
         # Strict Pi-only 1:1 mapping. Legacy token collectors remain unchanged.
         # Preserve existing assignments and never silently replace a printer.
         if len(request.announcement.printers) > 1:
@@ -134,6 +115,25 @@ def signed_discovery(request: SignedDiscovery):
             challenge.state = "rejected"
             db.commit()
             raise HTTPException(409, "Legacy Pi has multiple printer links; manual resolution required")
+
+        collector = db.get(RegisteredCollector, collector_id)
+        if collector is None:
+            # No bearer credential is issued or accessible by the Pi through
+            # this route. Preserve old token-based clients independently.
+            collector = RegisteredCollector(
+                collector_id=collector_id,
+                name="Raspberry Pi " + pi.hardware_id[-12:],
+                customer_id=None,
+                token_hash=hashlib.sha256(
+                    ("no-bearer-token:" + pi.hardware_id).encode()
+                ).hexdigest(),
+                enabled=False,
+            )
+            db.add(collector)
+        elif collector.enabled:
+            # Never silently take over a manually managed collector identity.
+            db.rollback()
+            raise HTTPException(409, "Collector identity conflict")
 
         result = record_discovered_printers(db, collector, request.announcement)
         challenge.state = "verified_discovery"

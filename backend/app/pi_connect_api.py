@@ -18,6 +18,8 @@ from .database import SessionLocal
 from .models import User
 from .pi_pairing import PiPairingAttempt
 from .pi_registered_devices import PiRegisteredDevice
+from .printer_discovery_links import PrinterDiscoveryLink
+from .pi_signed_discovery import collector_id_for_pi
 
 router = APIRouter(
     prefix="/api/secure/management/pi-connect", tags=["pi-connect"]
@@ -103,3 +105,31 @@ def list_connected_pi_keys(user: User = Depends(get_current_user)):
             select(PiRegisteredDevice).order_by(PiRegisteredDevice.registered_at.desc())
         ).all()
         return [public_device(row) for row in rows]
+
+
+@router.get("/printer-links")
+def list_pi_printer_links(user: User = Depends(get_current_user)):
+    """Technician-only read-only mapping for existing installation inventory."""
+    require_technician(user)
+    with SessionLocal() as db:
+        registered_ids = [pi.hardware_id for pi in db.scalars(
+            select(PiRegisteredDevice)
+        ).all()]
+        pi_by_collector = {
+            collector_id_for_pi(hardware_id): hardware_id
+            for hardware_id in registered_ids
+        }
+        if not pi_by_collector:
+            return []
+        rows = db.scalars(
+            select(PrinterDiscoveryLink).where(
+                PrinterDiscoveryLink.collector_id.in_(pi_by_collector)
+            )
+        ).all()
+        return [
+            {
+                "device_id": row.device_id,
+                "pi_hardware_id": pi_by_collector[row.collector_id],
+            }
+            for row in rows
+        ]

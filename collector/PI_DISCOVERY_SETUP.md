@@ -75,3 +75,27 @@ JWT, persist cloud settings locally, or grant monitoring/control permissions.
 Invalid or unreachable cloud configuration fails closed: the runner does not
 fall back to arbitrary local targets or scan the network. Remove the setting
 (or set `local`) to return to the old local-file configuration.
+
+## Experimental single-printer direct Ethernet detection
+
+Care-Inspector now supports an **opt-in** passive direct-link source for a
+dedicated Pi-to-Hitachi Ethernet cable:
+
+```ini
+CARE_INSPECTOR_PRINTER_CONFIG_SOURCE=direct-link
+CARE_INSPECTOR_PRINTER_INTERFACE=eth0
+```
+
+The agent reads only Linux's existing neighbor table on the selected interface.
+It does not scan subnets, open arbitrary ports or change the Pi's IP settings.
+It refuses to operate when that interface has a default route or when more
+than one candidate peer is found. A single candidate must then pass the
+existing **read-only Hitachi Modbus identity probe** before a signed inventory
+announcement is made. No customer assignment or printer controls are enabled.
+
+**Limitations:** A connected printer may not appear in the neighbor table
+until the operating system has already exchanged traffic with it. This
+method cannot reliably detect an unknown, silent printer on a different IP
+subnet. Physical Pi/Hitachi validation and an approved addressing/onboarding
+strategy remain necessary; do not enable this experimental mode in production
+without MFG IT review. The normal local-file behavior remains unchanged.

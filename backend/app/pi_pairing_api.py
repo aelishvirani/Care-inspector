@@ -45,13 +45,14 @@ def start_pairing(request: StartPairing, user: User = Depends(get_current_user))
     pairing_id = str(uuid4())
     challenge = base64.b64encode(secrets.token_bytes(32)).decode("ascii")
     with SessionLocal() as db:
-        # Limit pending challenges per actor and clear expired ones.
-        from sqlalchemy import delete, func, select
-        db.execute(delete(PiPairingAttempt).where(PiPairingAttempt.expires_at < now))
+        # Preserve pairing history referenced by permanent Pi registrations.
+        # Expired attempts do not count against the pending limit.
+        from sqlalchemy import func, select
         pending_count = db.scalar(
             select(func.count()).select_from(PiPairingAttempt).where(
                 PiPairingAttempt.actor_user_id == user.id,
                 PiPairingAttempt.status == "pending",
+                PiPairingAttempt.expires_at > now,
             )
         )
         if pending_count >= 5:

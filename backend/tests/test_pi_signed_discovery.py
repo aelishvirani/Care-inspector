@@ -3,6 +3,7 @@ import base64
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
+from types import SimpleNamespace
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -13,7 +14,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from backend.app import pi_signed_discovery
+from backend.app import pi_signed_discovery, pi_connect_api
+from backend.app.auth import get_current_user
 from backend.app.collectors import RegisteredCollector
 from backend.app.collectors_api import DiscoveryAnnouncement
 from backend.app.models import User, Customer, Device
@@ -41,6 +43,12 @@ class SignedDiscoveryTests(unittest.TestCase):
         self.addCleanup(self.engine.dispose)
         app = FastAPI()
         app.include_router(pi_signed_discovery.router)
+        app.include_router(pi_connect_api.router)
+        self.pi_db_patch = patch.object(pi_connect_api, 'SessionLocal', self.session)
+        self.pi_db_patch.start()
+        self.addCleanup(self.pi_db_patch.stop)
+        self.actor = SimpleNamespace(id=1, role='TECHNICIAN', email='tech@example.invalid')
+        app.dependency_overrides[get_current_user] = lambda: self.actor
         self.client = TestClient(app)
         self.addCleanup(self.client.close)
         self.key = Ed25519PrivateKey.generate()
@@ -187,6 +195,21 @@ class SignedDiscoveryTests(unittest.TestCase):
             self.assertIsNotNone(db.get(Device, "hitachi-test-1001"))
             self.assertIsNone(db.get(Device, "hitachi-test-1002"))
             self.assertEqual(db.query(PrinterDiscoveryLink).count(), 1)
+
+
+    def test_discovered_pi_printer_link_appears_in_existing_management_api(self):
+        cid, nonce = self.challenge()
+        self.assertEqual(self.announce(cid, nonce).status_code, 200)
+        response = self.client.get("/api/secure/management/pi-connect/printer-links")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json(), [{
+            "device_id": "hitachi-test-1001", "pi_hardware_id": self.hardware_id,
+        }])
+
+    def test_customer_cannot_list_pi_printer_links(self):
+        self.actor.role = "CUSTOMER"
+        response = self.client.get("/api/secure/management/pi-connect/printer-links")
+        self.assertEqual(response.status_code, 403)
 
 
 if __name__ == "__main__":

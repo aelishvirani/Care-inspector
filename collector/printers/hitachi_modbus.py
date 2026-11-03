@@ -5,7 +5,7 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 
-from printers.base import PrinterDriver
+from .base import PrinterDriver
 
 
 class HitachiModbusPrinter(PrinterDriver):

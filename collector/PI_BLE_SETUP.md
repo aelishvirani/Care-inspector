@@ -16,7 +16,7 @@ Pi OS packages:
 
 ```bash
 sudo apt update
-sudo apt install bluez python3-dbus python3-gi
+sudo apt install bluez python3-dbus python3-gi python3-cryptography
 ```
 
 Install the project source at `/opt/care-inspector` and create a dedicated
@@ -58,3 +58,32 @@ hardware ownership.
 - Hardware discovery and compatibility remain to be tested. Bluetooth
   advertisement support, adapter configuration, DBus permissions, and
   long GATT reads vary between images.
+
+
+## Development pairing proof transport (not cloud enrollment)
+
+The BLE service now exposes additional GATT characteristics within the same
+Care-Inspector service UUID:
+
+- `a18d7b12-f0e7-4d5e-8c1b-86e418d85001`: read Ed25519 public key (base64)
+- `a18d7b13-f0e7-4d5e-8c1b-86e418d85001`: write UTF-8 JSON pairing challenge
+- `a18d7b14-f0e7-4d5e-8c1b-86e418d85001`: read response signature (base64)
+
+The challenge JSON has exactly `pairing_id`, `hardware_id`, and
+`challenge_b64` keys. The signing bytes match the server-side
+`backend/app/pi_pairing_crypto.py` contract.
+
+The key is generated on the Pi at
+`/var/lib/care-inspector/pi-ed25519.key`, mode 0600.
+Provision `/var/lib/care-inspector` as a directory owned by the dedicated
+service account, mode 0700, before starting the service. Keep this key
+outside Git and never expose it to the browser.
+
+This implementation is a development bridge only. It signs remote challenges
+even for unauthenticated BLE clients. Without a physical presence confirmation,
+trusted public-key enrollment, and stronger Bluetooth session isolation, it must
+not permit cloud registration, remote control, or access to production secrets.
+The proof characteristic is shared per running agent and may be overwritten by
+concurrent connections; production implementation must bind challenge/proof to
+each authorized BLE connection, limit attempts, and implement suitable rate
+limits. This code has not been tested on real Pi Bluetooth hardware.

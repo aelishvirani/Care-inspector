@@ -142,3 +142,8 @@ export function updateDevice(
     }
   )
 }
+
+
+export function getPiPrinterLinks() {
+  return request('/secure/management/pi-connect/printer-links')
+}

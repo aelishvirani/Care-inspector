@@ -189,54 +189,73 @@ def announce_discovered_printers(
 
     with SessionLocal() as db:
         collector = authenticate_collector(x_collector_id, x_collector_token, db)
-        collector.last_seen = datetime.now(timezone.utc)
-        discovered = []
-        for info in request.printers:
-            existing = db.get(Device, info.device_id)
-            link = db.get(PrinterDiscoveryLink, info.device_id)
-            if existing is not None:
-                # Do not take over manually registered or other collectors' printers.
-                if link is None or link.collector_id != collector.collector_id:
-                    discovered.append({"device_id": info.device_id, "status": "already_exists"})
-                    continue
-                # Preserve manually edited printer information and GmbH assignment.
-                link.last_reported = collector.last_seen
-                if info.manufacturer:
-                    link.manufacturer = info.manufacturer
-                if info.serial_number:
-                    link.serial_text = info.serial_number
-                if info.protocol:
-                    link.protocol = info.protocol
-                discovered.append({"device_id": info.device_id, "status": "known"})
-                continue
-
-            # Discovery cannot assign customers or enable commands.
-            db.add(Device(
-                device_id=info.device_id,
-                display_name=info.display_name or info.device_id,
-                customer_id=None,
-                model_name=info.model_name,
-                source="discovered",
-                online=False,
-                status="pending_assignment",
-                last_seen=collector.last_seen,
-                temperature_c=0,
-                pressure_mpa=0,
-            ))
-            db.add(PrinterDiscoveryLink(
-                device_id=info.device_id,
-                collector_id=collector.collector_id,
-                manufacturer=info.manufacturer,
-                serial_text=info.serial_number,
-                protocol=info.protocol,
-                first_discovered=collector.last_seen,
-                last_reported=collector.last_seen,
-            ))
-            discovered.append({"device_id": info.device_id, "status": "unassigned"})
+        result = record_discovered_printers(db, collector, request, mac)
         db.commit()
-        return {
-            "collector_id": collector.collector_id,
-            "mac_address": mac,
-            "printers": discovered,
-            "controls_enabled": False,
-        }
+        return result
+
+
+def record_discovered_printers(db, collector: RegisteredCollector,
+                               request: DiscoveryAnnouncement,
+                               validated_mac: str | None = None) -> dict:
+    """Shared inventory operation: caller must have authenticated the collector.
+
+    Existing customer assignment and ownership safeguards are retained.
+    This never enables monitoring or printer control.
+    """
+    mac = (validated_mac if validated_mac is not None
+           else request.mac_address.strip().lower().replace("-", ":"))
+    if not MAC_RE.fullmatch(mac):
+        raise HTTPException(400, "Invalid network MAC address")
+    ids = [p.device_id for p in request.printers]
+    if len(ids) != len(set(ids)) or any(not DEVICE_RE.fullmatch(x) for x in ids):
+        raise HTTPException(400, "Invalid or duplicate printer device IDs")
+    collector.last_seen = datetime.now(timezone.utc)
+    discovered = []
+    for info in request.printers:
+        existing = db.get(Device, info.device_id)
+        link = db.get(PrinterDiscoveryLink, info.device_id)
+        if existing is not None:
+            # Do not take over manually registered or other collectors' printers.
+            if link is None or link.collector_id != collector.collector_id:
+                discovered.append({"device_id": info.device_id, "status": "already_exists"})
+                continue
+            # Preserve manually edited printer information and GmbH assignment.
+            link.last_reported = collector.last_seen
+            if info.manufacturer:
+                link.manufacturer = info.manufacturer
+            if info.serial_number:
+                link.serial_text = info.serial_number
+            if info.protocol:
+                link.protocol = info.protocol
+            discovered.append({"device_id": info.device_id, "status": "known"})
+            continue
+
+        # Discovery cannot assign customers or enable commands.
+        db.add(Device(
+            device_id=info.device_id,
+            display_name=info.display_name or info.device_id,
+            customer_id=None,
+            model_name=info.model_name,
+            source="discovered",
+            online=False,
+            status="pending_assignment",
+            last_seen=collector.last_seen,
+            temperature_c=0,
+            pressure_mpa=0,
+        ))
+        db.add(PrinterDiscoveryLink(
+            device_id=info.device_id,
+            collector_id=collector.collector_id,
+            manufacturer=info.manufacturer,
+            serial_text=info.serial_number,
+            protocol=info.protocol,
+            first_discovered=collector.last_seen,
+            last_reported=collector.last_seen,
+        ))
+        discovered.append({"device_id": info.device_id, "status": "unassigned"})
+    return {
+        "collector_id": collector.collector_id,
+        "mac_address": mac,
+        "printers": discovered,
+        "controls_enabled": False,
+    }

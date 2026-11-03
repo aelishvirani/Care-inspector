@@ -7,6 +7,7 @@ It provides read-only identification, NOT trusted authentication or pairing.
 from __future__ import annotations
 
 import sys
+import json
 
 try:
     from collector.pi_identity import (
@@ -14,6 +15,17 @@ try:
     )
 except ModuleNotFoundError:
     from pi_identity import collect_pi_identity, SERVICE_UUID, IDENTITY_UUID
+
+try:
+    from collector.pi_pairing_agent import (
+        PairingSigner, load_or_create_private_key, public_key_b64,
+        PUBLIC_KEY_UUID, CHALLENGE_UUID, PROOF_UUID,
+    )
+except ModuleNotFoundError:
+    from pi_pairing_agent import (
+        PairingSigner, load_or_create_private_key, public_key_b64,
+        PUBLIC_KEY_UUID, CHALLENGE_UUID, PROOF_UUID,
+    )
 
 ROOT = "/com/mfg/careinspector"
 BLUEZ = "org.bluez"
@@ -42,6 +54,10 @@ def run() -> None:
 
     # Fail closed before registering anything if the hardware is unsupported.
     payload = collect_pi_identity()
+    hardware_id = json.loads(payload)["hardware_id"]
+    key = load_or_create_private_key()
+    signer = PairingSigner(key, hardware_id)
+    key_payload = public_key_b64(key).encode("ascii")
 
     class Application(dbus.service.Object):
         def __init__(self, bus):
@@ -49,6 +65,9 @@ def run() -> None:
             super().__init__(bus, self.path)
             self.service = IdentityService(bus)
             self.characteristic = IdentityCharacteristic(bus, self.service)
+            self.public_key = PublicKeyCharacteristic(bus, self.service)
+            self.challenge = ChallengeCharacteristic(bus, self.service)
+            self.proof = ProofCharacteristic(bus, self.service)
 
         @dbus.service.method(OBJECT_MANAGER, out_signature="a{oa{sa{sv}}}")
         def GetManagedObjects(self):
@@ -59,6 +78,9 @@ def run() -> None:
                 self.characteristic.path: {
                     GATT_CHAR: self.characteristic.properties(),
                 },
+                self.public_key.path: {GATT_CHAR: self.public_key.properties()},
+                self.challenge.path: {GATT_CHAR: self.challenge.properties()},
+                self.proof.path: {GATT_CHAR: self.proof.properties()},
             }
 
     class IdentityService(dbus.service.Object):
@@ -112,6 +134,101 @@ def run() -> None:
                 )
             return dbus.Array([dbus.Byte(byte) for byte in payload[offset:]],
                               signature="y")
+
+    class PublicKeyCharacteristic(dbus.service.Object):
+        def __init__(self, bus, service):
+            self.path = service.path + "/char1"
+            self.service = service
+            super().__init__(bus, self.path)
+
+        def properties(self):
+            return {
+                "UUID": dbus.String(PUBLIC_KEY_UUID),
+                "Service": dbus.ObjectPath(self.service.path),
+                "Flags": dbus.Array(["read"], signature="s"),
+            }
+
+        @dbus.service.method(PROPERTIES, in_signature="s", out_signature="a{sv}")
+        def GetAll(self, interface):
+            if interface != GATT_CHAR:
+                raise dbus.exceptions.DBusException(
+                    "Unknown interface", name="org.freedesktop.DBus.Error.InvalidArgs"
+                )
+            return self.properties()
+
+        @dbus.service.method(GATT_CHAR, in_signature="a{sv}", out_signature="ay")
+        def ReadValue(self, options):
+            offset = int(options.get("offset", 0))
+            if offset < 0 or offset > len(key_payload):
+                raise dbus.exceptions.DBusException(
+                    "Invalid offset", name="org.bluez.Error.InvalidOffset"
+                )
+            return dbus.Array([dbus.Byte(x) for x in key_payload[offset:]], signature="y")
+
+    class ChallengeCharacteristic(dbus.service.Object):
+        def __init__(self, bus, service):
+            self.path = service.path + "/char2"
+            self.service = service
+            super().__init__(bus, self.path)
+
+        def properties(self):
+            return {
+                "UUID": dbus.String(CHALLENGE_UUID),
+                "Service": dbus.ObjectPath(self.service.path),
+                "Flags": dbus.Array(["write"], signature="s"),
+            }
+
+        @dbus.service.method(PROPERTIES, in_signature="s", out_signature="a{sv}")
+        def GetAll(self, interface):
+            if interface != GATT_CHAR:
+                raise dbus.exceptions.DBusException(
+                    "Unknown interface", name="org.freedesktop.DBus.Error.InvalidArgs"
+                )
+            return self.properties()
+
+        @dbus.service.method(GATT_CHAR, in_signature="aya{sv}", out_signature="")
+        def WriteValue(self, value, options):
+            if int(options.get("offset", 0)) != 0:
+                raise dbus.exceptions.DBusException(
+                    "Invalid offset", name="org.bluez.Error.InvalidOffset"
+                )
+            try:
+                signer.accept_challenge(bytes(value))
+            except ValueError as exc:
+                raise dbus.exceptions.DBusException(
+                    "Invalid challenge", name="org.bluez.Error.InvalidValueLength"
+                ) from exc
+
+    class ProofCharacteristic(dbus.service.Object):
+        def __init__(self, bus, service):
+            self.path = service.path + "/char3"
+            self.service = service
+            super().__init__(bus, self.path)
+
+        def properties(self):
+            return {
+                "UUID": dbus.String(PROOF_UUID),
+                "Service": dbus.ObjectPath(self.service.path),
+                "Flags": dbus.Array(["read"], signature="s"),
+            }
+
+        @dbus.service.method(PROPERTIES, in_signature="s", out_signature="a{sv}")
+        def GetAll(self, interface):
+            if interface != GATT_CHAR:
+                raise dbus.exceptions.DBusException(
+                    "Unknown interface", name="org.freedesktop.DBus.Error.InvalidArgs"
+                )
+            return self.properties()
+
+        @dbus.service.method(GATT_CHAR, in_signature="a{sv}", out_signature="ay")
+        def ReadValue(self, options):
+            try:
+                value = signer.read_proof(int(options.get("offset", 0)))
+            except ValueError as exc:
+                raise dbus.exceptions.DBusException(
+                    "Pairing proof not available", name="org.bluez.Error.NotPermitted"
+                ) from exc
+            return dbus.Array([dbus.Byte(x) for x in value], signature="y")
 
     class Advertisement(dbus.service.Object):
         def __init__(self, bus):

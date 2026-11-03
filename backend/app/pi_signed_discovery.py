@@ -111,6 +111,30 @@ def signed_discovery(request: SignedDiscovery):
             db.rollback()
             raise HTTPException(409, "Collector identity conflict")
 
+        # Strict Pi-only 1:1 mapping. Legacy token collectors remain unchanged.
+        # Preserve existing assignments and never silently replace a printer.
+        if len(request.announcement.printers) > 1:
+            challenge.state = "rejected"
+            db.commit()
+            raise HTTPException(409, "One Raspberry Pi can report only one printer")
+        from .printer_discovery_links import PrinterDiscoveryLink
+        existing_printer_ids = set(db.scalars(
+            select(PrinterDiscoveryLink.device_id).where(
+                PrinterDiscoveryLink.collector_id == collector_id
+            )
+        ).all())
+        incoming_ids = {p.device_id for p in request.announcement.printers}
+        if existing_printer_ids and incoming_ids and incoming_ids != existing_printer_ids:
+            challenge.state = "rejected"
+            db.commit()
+            raise HTTPException(
+                409, "Pi already has a linked printer; explicit reassignment required"
+            )
+        if len(existing_printer_ids) > 1:
+            challenge.state = "rejected"
+            db.commit()
+            raise HTTPException(409, "Legacy Pi has multiple printer links; manual resolution required")
+
         result = record_discovered_printers(db, collector, request.announcement)
         challenge.state = "verified_discovery"
         try:

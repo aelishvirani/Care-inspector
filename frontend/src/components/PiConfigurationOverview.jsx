@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../api/client'
+import PiTargetEditor from './PiTargetEditor'
 
 /**
  * Read-only overview of registered Raspberry Pis and staged printer targets.
@@ -9,6 +10,7 @@ export default function PiConfigurationOverview() {
   const [registered, setRegistered] = useState([])
   const [selected, setSelected] = useState('')
   const [config, setConfig] = useState(null)
+  const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingConfig, setLoadingConfig] = useState(false)
   const [error, setError] = useState('')
@@ -42,6 +44,7 @@ export default function PiConfigurationOverview() {
   useEffect(() => {
     let cancelled = false
     setConfig(null)
+    setEditing(false)
     if (!selected) return undefined
 
     async function load() {
@@ -102,7 +105,16 @@ export default function PiConfigurationOverview() {
               {' '}{config.printers.length} target(s) ·
               {' '}Not confirmed applied to Pi
             </p>
-            {config.printers.length === 0 ? (
+            {!editing && (
+              <button type="button" className="pi-info-btn" onClick={() => setEditing(true)}>
+                Edit staged targets
+              </button>
+            )}
+            {editing ? (
+              <PiTargetEditor configuration={config}
+                onSaved={result => { setConfig(result); setEditing(false) }}
+                onCancel={() => setEditing(false)} />
+            ) : config.printers.length === 0 ? (
               <p className="pi-muted">No printer targets staged for this Pi.</p>
             ) : (
               <div className="pi-config-list">

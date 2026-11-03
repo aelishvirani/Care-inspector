@@ -7,10 +7,8 @@ import base64
 from pathlib import Path
 
 from .pi_cloud_auth_client import cloud_message, post_json
-from .pi_cloud_service import load_service_settings
 from .pi_pairing_agent import DEFAULT_KEY_PATH, load_or_create_private_key
 from .pi_identity import hardware_serial
-from .pi_printer_discovery import load_targets
 
 DOMAIN = b"care-inspector-pi-config-fetch-v1\x00"
 

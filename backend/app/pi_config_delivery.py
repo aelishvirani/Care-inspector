@@ -81,6 +81,6 @@ def fetch_pi_configuration(request: ConfigFetchProof):
             "printers": json.loads(row.targets_json) if row else [],
             "configuration_applied": False,
         }
-        challenge.state = "verified_config_fetch"
+        challenge.state = "config_fetched"
         db.commit()
         return response

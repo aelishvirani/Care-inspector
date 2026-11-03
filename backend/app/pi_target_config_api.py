@@ -35,7 +35,7 @@ class PrinterTargetInput(BaseModel):
 class SaveTargets(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     expected_version: int = Field(ge=0)
-    printers: list[PrinterTargetInput] = Field(max_length=30)
+    printers: list[PrinterTargetInput] = Field(max_length=1)
 
 
 def normalized_targets(printers: list[PrinterTargetInput]) -> list[dict]:

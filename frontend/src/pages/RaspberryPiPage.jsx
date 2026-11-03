@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { CARE_INSPECTOR_SERVICE, readPiIdentity, verifyPiKeyPossession } from '../bluetooth/piIdentity'
 import { apiPost } from '../api/client'
-import PiConfigurationOverview from '../components/PiConfigurationOverview'
 import '../styles/management.css'
 import '../styles/raspberry-pi.css'
 
@@ -232,8 +231,6 @@ export default function RaspberryPiPage() {
           </div>
         )}
       </section>
-
-      <PiConfigurationOverview />
 
       <p className="pi-footer-note">For security, choosing a Bluetooth device does not register it, connect it to the backend, or authorize printer commands.</p>
 

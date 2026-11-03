@@ -18,6 +18,10 @@ from .database import SessionLocal
 from .pi_cloud_challenges import PiCloudChallenge
 from .pi_cloud_crypto import verify_cloud_signature
 from .pi_registered_devices import PiRegisteredDevice
+from .pi_heartbeat import PiHeartbeat
+from .auth import get_current_user, require_technician
+from .models import User
+from fastapi import Depends
 
 router = APIRouter(prefix="/api/pi-auth", tags=["pi-cloud-auth"])
 
@@ -95,6 +99,12 @@ def prove_cloud_identity(request: ProofRequest):
             valid = False
         if valid:
             challenge.state = "verified"
+            heartbeat = db.get(PiHeartbeat, device.hardware_id)
+            if heartbeat is None:
+                heartbeat = PiHeartbeat(hardware_id=device.hardware_id, last_authenticated_at=now)
+                db.add(heartbeat)
+            else:
+                heartbeat.last_authenticated_at = now
         db.commit()
         if not valid:
             raise HTTPException(403, "Invalid signature")
@@ -104,3 +114,31 @@ def prove_cloud_identity(request: ProofRequest):
             "cloud_session_issued": False,
             "collector_access_granted": False,
         }
+
+
+@router.get("/devices")
+def registered_pi_presence(user: User = Depends(get_current_user)):
+    """Technician/Admin-only Pi last-authenticated timestamps.
+
+    Online is a recent signed check-in, not a persistent network connection.
+    """
+    require_technician(user)
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as db:
+        rows = db.execute(
+            select(PiRegisteredDevice, PiHeartbeat)
+            .outerjoin(PiHeartbeat, PiHeartbeat.hardware_id == PiRegisteredDevice.hardware_id)
+        ).all()
+        return [
+            {
+                "hardware_id": device.hardware_id,
+                "status": device.status,
+                "last_authenticated_at": (
+                    utc(hb.last_authenticated_at).isoformat() if hb else None
+                ),
+                "recently_authenticated": bool(
+                    hb and (now - utc(hb.last_authenticated_at)).total_seconds() <= 180
+                ),
+            }
+            for device, hb in rows
+        ]

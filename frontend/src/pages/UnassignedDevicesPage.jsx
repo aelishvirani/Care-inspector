@@ -11,6 +11,7 @@ import {
 import {
   getCustomers,
   getManagedDevices,
+  getPiPrinterLinks,
   updateDevice,
 } from '../api/managementApi'
 
@@ -63,6 +64,8 @@ export default function UnassignedDevicesPage() {
   const [customers, setCustomers] =
     useState([])
 
+  const [piLinks, setPiLinks] = useState({})
+
   const [
     assignments,
     setAssignments,
@@ -83,10 +86,15 @@ export default function UnassignedDevicesPage() {
       const [
         deviceRows,
         customerRows,
+        piLinkRows,
       ] = await Promise.all([
         getManagedDevices(),
         getCustomers(),
+        getPiPrinterLinks(),
       ])
+      setPiLinks(Object.fromEntries(
+        piLinkRows.map(link => [link.device_id, link.pi_hardware_id])
+      ))
 
       setDevices(deviceRows)
 
@@ -384,6 +392,11 @@ export default function UnassignedDevicesPage() {
                         <span>
                           {device.device_id}
                         </span>
+                        {piLinks[device.device_id] && (
+                          <span>
+                            Raspberry Pi: {piLinks[device.device_id]}
+                          </span>
+                        )}
                       </div>
 
 

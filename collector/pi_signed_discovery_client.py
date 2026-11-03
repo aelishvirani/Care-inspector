@@ -19,8 +19,8 @@ FIELDS = ("device_id", "display_name", "manufacturer", "model_name",
 
 
 def normalize_inventory(mac_address: str, printers: list[dict]) -> dict:
-    if not isinstance(printers, list) or len(printers) > 30:
-        raise ValueError("Expected at most 30 printers")
+    if not isinstance(printers, list) or len(printers) > 1:
+        raise ValueError("Expected at most one printer per Raspberry Pi")
     # Match Pydantic's normalization and default-valued optional properties.
     normalized = []
     for printer in printers:

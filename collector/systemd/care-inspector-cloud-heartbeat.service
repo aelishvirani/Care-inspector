@@ -1,0 +1,24 @@
+[Unit]
+Description=Care-Inspector Raspberry Pi signed cloud check-in
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=careinspector
+Group=careinspector
+WorkingDirectory=/opt/care-inspector
+EnvironmentFile=/etc/care-inspector/pi-cloud.env
+ExecStart=/usr/bin/python3 -m collector.pi_cloud_service
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/lib/care-inspector
+
+[Install]
+WantedBy=multi-user.target

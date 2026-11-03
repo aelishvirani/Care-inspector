@@ -10,6 +10,7 @@ export default function RaspberryPiPage() {
   const [scanning, setScanning] = useState(false)
   const [inspectingId, setInspectingId] = useState(null)
   const [verifyingId, setVerifyingId] = useState(null)
+  const [connectingId, setConnectingId] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
@@ -39,6 +40,8 @@ export default function RaspberryPiPage() {
         identityError: '',
         keyVerified: false,
         verificationError: '',
+        pairingId: null,
+        registration: null,
       }
 
       setDevices(previous => [
@@ -62,12 +65,12 @@ export default function RaspberryPiPage() {
     setInspectingId(candidate.id)
     try {
       const identity = await readPiIdentity(candidate.device)
-      const updated = { ...candidate, identity, identityError: '', keyVerified: false, verificationError: '' }
+      const updated = { ...candidate, identity, identityError: '', keyVerified: false, verificationError: '', pairingId: null }
       setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
       setDetails(updated)
       setNotice('Care-Inspector identity service detected. Cryptographic verification is still required.')
     } catch (err) {
-      const updated = { ...candidate, identity: null, keyVerified: false, verificationError: '',
+      const updated = { ...candidate, identity: null, keyVerified: false, pairingId: null, verificationError: '',
         identityError: 'Pi identity service unavailable: ' + (err.message || 'Unknown error') }
       setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
       setDetails(updated)
@@ -85,20 +88,47 @@ export default function RaspberryPiPage() {
       const result = await verifyPiKeyPossession(candidate.device, candidate.identity, apiPost)
       const updated = {
         ...candidate, keyVerified: result.status === 'key_possession_confirmed',
-        verificationError: '',
+        pairingId: result.pairing_id, verificationError: '',
       }
       setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
       setDetails(previous => previous?.id === candidate.id ? updated : previous)
       setNotice('Bluetooth key possession confirmed. Device ownership and cloud enrollment are NOT verified.')
     } catch (err) {
       const updated = {
-        ...candidate, keyVerified: false,
+        ...candidate, keyVerified: false, pairingId: null,
         verificationError: err.message || 'Key verification failed',
       }
       setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
       setDetails(previous => previous?.id === candidate.id ? updated : previous)
     } finally {
       setVerifyingId(null)
+    }
+  }
+
+  async function connectDevice(candidate) {
+    if (!candidate.keyVerified || !candidate.pairingId || candidate.registration || connectingId !== null) return
+    setError('')
+    setNotice('')
+    setConnectingId(candidate.id)
+    try {
+      // Explicit technician action. No collector token is issued here.
+      const registration = await apiPost('/secure/management/pi-connect', {
+        pairing_id: candidate.pairingId,
+        authorize_device: true,
+      })
+      if (registration?.status !== 'registered_awaiting_cloud_auth') {
+        throw new Error('Unexpected cloud registration response')
+      }
+      const updated = { ...candidate, registration, verificationError: '' }
+      setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
+      setDetails(previous => previous?.id === candidate.id ? updated : previous)
+      setNotice('Pi key registered. Cloud authentication is not yet active; the Pi is not online.')
+    } catch (err) {
+      const updated = { ...candidate, verificationError: err.message || 'Registration failed' }
+      setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
+      setDetails(previous => previous?.id === candidate.id ? updated : previous)
+    } finally {
+      setConnectingId(null)
     }
   }
 
@@ -168,9 +198,9 @@ export default function RaspberryPiPage() {
                 <div className="pi-device-icon" aria-hidden="true">⌁</div>
                 <div className="pi-device-copy">
                   <strong>{item.name}</strong>
-                  <span>Selected at {item.foundAt} · {item.keyVerified ? 'Key possession confirmed, not trusted' : item.identity ? 'Pi service detected, not authenticated' : 'Identity not verified'}</span>
+                  <span>Selected at {item.foundAt} · {item.registration ? 'Key registered; cloud authentication pending' : item.keyVerified ? 'Key possession confirmed, not trusted' : item.identity ? 'Pi service detected, not authenticated' : 'Identity not verified'}</span>
                 </div>
-                <span className="pi-status">{item.keyVerified ? 'Key verified' : item.identity ? 'Service found' : 'Unverified'}</span>
+                <span className="pi-status">{item.registration ? 'Registered key' : item.keyVerified ? 'Key verified' : item.identity ? 'Service found' : 'Unverified'}</span>
                 <div className="pi-actions">
                   <button className="pi-info-btn" type="button"
                     onClick={() => setDetails(item)} aria-label={`Information about ${item.name}`}>
@@ -189,9 +219,11 @@ export default function RaspberryPiPage() {
                   <button className="pi-info-btn" type="button"
                     onClick={() => removeDevice(item.id)}
                     aria-label={`Remove ${item.name} from temporary list`}>× Remove</button>
-                  <button className="pi-connect-btn" type="button" disabled
-                    title="Available only after cryptographic device verification and secure enrollment">
-                    Connect
+                  <button className="pi-connect-btn" type="button"
+                    disabled={!item.keyVerified || !item.pairingId || !!item.registration || connectingId !== null || verifyingId !== null}
+                    onClick={() => connectDevice(item)}
+                    title="Register the selected Pi key; cloud authentication is configured separately">
+                    {item.registration ? 'Registered' : connectingId === item.id ? 'Registering...' : 'Connect'}
                   </button>
                 </div>
               </div>
@@ -232,7 +264,7 @@ export default function RaspberryPiPage() {
               </>}
               <div className="pi-info-row"><span>MAC address</span><strong>{details.identity?.macAddress || 'Unavailable (Chrome does not expose it)'}</strong></div>
               
-              <div className="pi-info-row"><span>Cloud connection</span><strong>Not paired</strong></div>
+              <div className="pi-info-row"><span>Cloud connection</span><strong>{details.registration ? 'Key registered; agent authentication pending' : 'Not paired'}</strong></div>
             </div>
             <p className="pi-info-explanation">The displayed Bluetooth name, MAC and GATT identity may be spoofed. A valid key signature proves only key possession, not hardware ownership. Connect remains disabled until a trusted onboarding and enrollment process is implemented.</p>
             <div className="pi-modal-footer">
@@ -246,7 +278,11 @@ export default function RaspberryPiPage() {
               </button>
               <button className="pi-info-btn" type="button"
                 onClick={() => setDetails(null)}>Close</button>
-              <button className="pi-connect-btn" type="button" disabled>Connect</button>
+              <button className="pi-connect-btn" type="button"
+                disabled={!details.keyVerified || !details.pairingId || !!details.registration || connectingId !== null || verifyingId !== null}
+                onClick={() => connectDevice(details)}>
+                {details.registration ? 'Registered' : connectingId === details.id ? 'Registering...' : 'Connect'}
+              </button>
             </div>
           </section>
         </div>

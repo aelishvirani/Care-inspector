@@ -26,6 +26,11 @@ class PiPrinterDiscoveryTests(unittest.TestCase):
         self.assertEqual(len(targets), 1)
         self.assertEqual(targets[0].port, 1502)
 
+    def test_two_distinct_targets_rejected_for_one_pi(self):
+        second = dict(self.target, host="127.0.0.2")
+        with self.assertRaises(ValueError):
+            self.load({"printers": [self.target, second]})
+
     def test_public_addresses_not_probed(self):
         with self.assertRaises(ValueError):
             self.load({"printers": [dict(self.target, host="8.8.8.8")]})

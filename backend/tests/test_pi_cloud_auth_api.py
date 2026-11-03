@@ -16,6 +16,8 @@ from backend.app import pi_cloud_auth_api
 from backend.app.pi_cloud_crypto import cloud_message
 from backend.app.pi_cloud_challenges import PiCloudChallenge
 from backend.app.pi_registered_devices import PiRegisteredDevice
+from backend.app.pi_pairing import PiPairingAttempt
+from backend.app.models import User
 
 
 class CloudAuthApiTests(unittest.TestCase):
@@ -23,8 +25,10 @@ class CloudAuthApiTests(unittest.TestCase):
         self.engine = create_engine(
             "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
         )
-        PiRegisteredDevice.__table__.create(self.engine)
-        PiCloudChallenge.__table__.create(self.engine)
+        # Respect foreign-key dependencies in this isolated SQLite schema.
+        # registered_devices -> pairing_attempts -> users.
+        for model in (User, PiPairingAttempt, PiRegisteredDevice, PiCloudChallenge):
+            model.__table__.create(self.engine)
         self.session = sessionmaker(bind=self.engine, autoflush=False)
         self.patch = patch.object(pi_cloud_auth_api, "SessionLocal", self.session)
         self.patch.start()

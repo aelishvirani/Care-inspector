@@ -1593,6 +1593,9 @@ app.include_router(pi_signed_discovery_router)
 from .pi_target_config_api import router as pi_target_config_router
 app.include_router(pi_target_config_router)
 
+from .pi_config_delivery import router as pi_config_delivery_router
+app.include_router(pi_config_delivery_router)
+
 
 
 # Secure customer/technician data API

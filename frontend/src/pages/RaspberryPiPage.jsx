@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CARE_INSPECTOR_SERVICE, readPiIdentity } from '../bluetooth/piIdentity'
 import '../styles/management.css'
 import '../styles/raspberry-pi.css'
 
@@ -6,6 +7,7 @@ export default function RaspberryPiPage() {
   const [devices, setDevices] = useState([])
   const [details, setDetails] = useState(null)
   const [scanning, setScanning] = useState(false)
+  const [inspectingId, setInspectingId] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
@@ -23,6 +25,7 @@ export default function RaspberryPiPage() {
       // select a device, NOT pairing or verification of Raspberry Pi identity.
       const bluetoothDevice = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
+        optionalServices: [CARE_INSPECTOR_SERVICE],
       })
 
       const candidate = {
@@ -30,6 +33,8 @@ export default function RaspberryPiPage() {
         name: bluetoothDevice.name || 'Unknown Bluetooth device',
         device: bluetoothDevice,
         foundAt: new Date().toLocaleTimeString(),
+        identity: null,
+        identityError: '',
       }
 
       setDevices(previous => [
@@ -45,6 +50,34 @@ export default function RaspberryPiPage() {
     } finally {
       setScanning(false)
     }
+  }
+
+  async function inspectDevice(candidate) {
+    setDetails(candidate)
+    setError('')
+    setInspectingId(candidate.id)
+    try {
+      const identity = await readPiIdentity(candidate.device)
+      const updated = { ...candidate, identity, identityError: '' }
+      setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
+      setDetails(updated)
+      setNotice('Care-Inspector identity service detected. Cryptographic verification is still required.')
+    } catch (err) {
+      const updated = { ...candidate, identity: null,
+        identityError: 'Pi identity service unavailable: ' + (err.message || 'Unknown error') }
+      setDevices(previous => previous.map(item => item.id === candidate.id ? updated : item))
+      setDetails(updated)
+    } finally {
+      setInspectingId(null)
+    }
+  }
+
+  function removeDevice(id) {
+    const device = devices.find(item => item.id === id)?.device
+    if (device?.gatt?.connected) device.gatt.disconnect()
+    setDevices(previous => previous.filter(item => item.id !== id))
+    if (details?.id === id) setDetails(null)
+    setNotice('Temporary device removed from this page.')
   }
 
   return (
@@ -73,7 +106,7 @@ export default function RaspberryPiPage() {
         <div className="pi-stat">
           <span className="pi-stat-label">Verified Raspberry Pis</span>
           <strong>0</strong>
-          <span className="pi-stat-subtitle">Verification agent not installed yet</span>
+          <span className="pi-stat-subtitle">Identity check requires the Pi BLE service</span>
         </div>
         <div className="pi-stat">
           <span className="pi-stat-label">Paired to cloud</span>
@@ -86,7 +119,7 @@ export default function RaspberryPiPage() {
         <div className="pi-section-head">
           <div>
             <h2 id="pi-devices-title">Nearby Devices</h2>
-            <p>Devices you select in Chrome appear here. Only verified Raspberry Pis will be connectable.</p>
+            <p>Devices selected in Chrome remain temporary until secure pairing is complete.</p>
           </div>
           <span className="pi-count">{devices.length} selected</span>
         </div>
@@ -105,16 +138,24 @@ export default function RaspberryPiPage() {
                 <div className="pi-device-icon" aria-hidden="true">⌁</div>
                 <div className="pi-device-copy">
                   <strong>{item.name}</strong>
-                  <span>Selected at {item.foundAt} · Identity not verified</span>
+                  <span>Selected at {item.foundAt} · {item.identity ? 'Pi service detected, not authenticated' : 'Identity not verified'}</span>
                 </div>
-                <span className="pi-status">Unverified</span>
+                <span className="pi-status">{item.identity ? 'Service found' : 'Unverified'}</span>
                 <div className="pi-actions">
                   <button className="pi-info-btn" type="button"
                     onClick={() => setDetails(item)} aria-label={`Information about ${item.name}`}>
                     ⓘ Info
                   </button>
+                  <button className="pi-info-btn" type="button"
+                    disabled={inspectingId === item.id}
+                    onClick={() => inspectDevice(item)}>
+                    {inspectingId === item.id ? 'Checking...' : 'Check Pi'}
+                  </button>
+                  <button className="pi-info-btn" type="button"
+                    onClick={() => removeDevice(item.id)}
+                    aria-label={`Remove ${item.name} from temporary list`}>× Remove</button>
                   <button className="pi-connect-btn" type="button" disabled
-                    title="Available only after secure Raspberry Pi identity verification">
+                    title="Available only after cryptographic device verification and secure enrollment">
                     Connect
                   </button>
                 </div>
@@ -145,13 +186,23 @@ export default function RaspberryPiPage() {
               <div className="pi-info-row"><span>Bluetooth name</span><strong>{details.name}</strong></div>
               <div className="pi-info-row"><span>Browser device identifier</span><code>{details.id}</code></div>
               <div className="pi-info-row"><span>Detected</span><strong>{details.foundAt}</strong></div>
-              <div className="pi-info-row"><span>Device verification</span><strong>Not verified</strong></div>
-              <div className="pi-info-row"><span>MAC address</span><strong>Unavailable from Chrome</strong></div>
-              <div className="pi-info-row"><span>Model / serial number</span><strong>Awaiting Pi BLE identity service</strong></div>
+              <div className="pi-info-row"><span>Device verification</span><strong>Not authenticated</strong></div>
+              <div className="pi-info-row"><span>Care-Inspector BLE service</span><strong>{details.identity ? 'Found (untrusted)' : 'Not checked / unavailable'}</strong></div>
+              {details.identityError && <p role="status" className="pi-alert pi-alert-error">{details.identityError}</p>}
+              {details.identity && <>
+                <div className="pi-info-row"><span>Hardware ID (reported)</span><code>{details.identity.hardwareId}</code></div>
+                <div className="pi-info-row"><span>Hostname (reported)</span><strong>{details.identity.hostname}</strong></div>
+                <div className="pi-info-row"><span>Model (reported)</span><strong>{details.identity.model}</strong></div>
+              </>}
+              <div className="pi-info-row"><span>MAC address</span><strong>{details.identity?.macAddress || 'Unavailable (Chrome does not expose it)'}</strong></div>
+              
               <div className="pi-info-row"><span>Cloud connection</span><strong>Not paired</strong></div>
             </div>
-            <p className="pi-info-explanation">A Bluetooth name is not proof this is a Raspberry Pi. The Connect button will become available after authenticated Pi identification is implemented.</p>
+            <p className="pi-info-explanation">The displayed Bluetooth name, MAC and GATT identity may be spoofed. Connect remains disabled until a cryptographic proof of device identity and secure enrollment are implemented.</p>
             <div className="pi-modal-footer">
+              <button className="pi-info-btn" type="button"
+                disabled={inspectingId === details.id}
+                onClick={() => inspectDevice(details)}>{inspectingId === details.id ? 'Checking...' : 'Check Pi Identity'}</button>
               <button className="pi-info-btn" type="button"
                 onClick={() => setDetails(null)}>Close</button>
               <button className="pi-connect-btn" type="button" disabled>Connect</button>

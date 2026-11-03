@@ -30,6 +30,7 @@ from . import printer_commands  # Register command models
 from . import collectors  # Register collector identities
 from . import printer_discovery_links  # Persist Pi-to-printer inventory
 from . import pi_pairing  # Register short-lived pairing challenges
+from . import pi_enrollment  # Register pending-only Pi enrollment requests
 from .group_access import allowed_device_ids
 from .models import (
     Alert,
@@ -1572,6 +1573,9 @@ app.include_router(pi_discovery_router)
 
 from .pi_pairing_api import router as pi_pairing_router
 app.include_router(pi_pairing_router)
+
+from .pi_enrollment_api import router as pi_enrollment_router
+app.include_router(pi_enrollment_router)
 
 
 

@@ -56,4 +56,22 @@ Existing GmbH assignment is preserved on repeat announcements.
 
 **Do not install on a production Pi yet.** Validate the hardware, manufacturer
 register mapping, service account permissions, outbound HTTPS and enrollment
-trust before real deployment. Remote configuration is a separate feature.
+trust before real deployment. Cloud target retrieval is an optional, independently authenticated feature; it does not enable printer control.
+
+## Optional cloud target configuration (not yet hardware-tested)
+
+The existing local JSON target file remains the default. To enable signed
+in-memory configuration retrieval for the registered Pi, MFG IT may add:
+
+```ini
+CARE_INSPECTOR_PRINTER_CONFIG_SOURCE=cloud
+```
+
+A technician or admin first stages targets using
+`PUT /api/secure/management/pi-targets/{hardware_id}` with the current
+`expected_version`. The Pi obtains its own settings via an Ed25519-signed,
+one-use `POST /api/pi-config/fetch` request; it **does not** use a technician
+JWT, persist cloud settings locally, or grant monitoring/control permissions.
+Invalid or unreachable cloud configuration fails closed: the runner does not
+fall back to arbitrary local targets or scan the network. Remove the setting
+(or set `local`) to return to the old local-file configuration.

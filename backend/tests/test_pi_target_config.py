@@ -102,6 +102,16 @@ class PiTargetConfigTests(unittest.TestCase):
             "expected_version": 0, "printers": [payload],
         }).status_code, 422)
 
+    def test_two_distinct_printers_rejected_for_one_pi(self):
+        second = dict(self.printers[0], host="192.168.1.51")
+        response = self.client.put(self.url, json={
+            "expected_version": 0,
+            "printers": [self.printers[0], second],
+        })
+        self.assertEqual(response.status_code, 422)
+        with self.session() as db:
+            self.assertIsNone(db.get(PiTargetConfiguration, "pi-00000000abcdef12"))
+
     def test_duplicate_endpoint_rejected(self):
         self.assertEqual(self.client.put(self.url, json={
             "expected_version": 0, "printers": self.printers * 2,

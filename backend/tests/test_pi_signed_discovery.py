@@ -145,5 +145,49 @@ class SignedDiscoveryTests(unittest.TestCase):
         self.assertEqual(self.announce(cid, nonce).status_code, 410)
 
 
+    def test_one_pi_rejects_two_printers_without_creating_inventory(self):
+        cid, nonce = self.challenge()
+        second = dict(self.announcement["printers"][0], device_id="hitachi-test-1002")
+        payload = dict(self.announcement, printers=[
+            self.announcement["printers"][0], second,
+        ])
+        original = DiscoveryAnnouncement.model_validate(payload)
+        signature = self.key.sign(pi_signed_discovery.discovery_message(
+            cid, self.hardware_id, nonce, original,
+        ))
+        response = self.client.post("/api/pi-discovery/announce", json={
+            "hardware_id": self.hardware_id, "challenge_id": cid,
+            "signature_b64": base64.b64encode(signature).decode(),
+            "announcement": payload,
+        })
+        self.assertEqual(response.status_code, 409, response.text)
+        with self.session() as db:
+            self.assertEqual(db.query(PrinterDiscoveryLink).count(), 0)
+            self.assertEqual(db.query(RegisteredCollector).count(), 0)
+            self.assertEqual(db.get(PiCloudChallenge, cid).state, "rejected")
+
+    def test_one_pi_cannot_silently_replace_existing_printer(self):
+        cid, nonce = self.challenge()
+        self.assertEqual(self.announce(cid, nonce).status_code, 200)
+        cid, nonce = self.challenge()
+        payload = dict(self.announcement, printers=[
+            dict(self.announcement["printers"][0], device_id="hitachi-test-1002")
+        ])
+        original = DiscoveryAnnouncement.model_validate(payload)
+        signature = self.key.sign(pi_signed_discovery.discovery_message(
+            cid, self.hardware_id, nonce, original,
+        ))
+        response = self.client.post("/api/pi-discovery/announce", json={
+            "hardware_id": self.hardware_id, "challenge_id": cid,
+            "signature_b64": base64.b64encode(signature).decode(),
+            "announcement": payload,
+        })
+        self.assertEqual(response.status_code, 409, response.text)
+        with self.session() as db:
+            self.assertIsNotNone(db.get(Device, "hitachi-test-1001"))
+            self.assertIsNone(db.get(Device, "hitachi-test-1002"))
+            self.assertEqual(db.query(PrinterDiscoveryLink).count(), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -58,7 +59,7 @@ class PiTargetConfigTests(unittest.TestCase):
         app = FastAPI()
         app.include_router(pi_target_config_api.router)
         app.dependency_overrides[pi_target_config_api.get_current_user] = lambda: self.user
-        self.user = self.session().get(User, 1)
+        self.user = SimpleNamespace(id=1, email="tech@example.org", role="TECHNICIAN")
         self.client = TestClient(app)
         self.addCleanup(self.client.close)
         self.url = "/api/secure/management/pi-targets/pi-00000000abcdef12"

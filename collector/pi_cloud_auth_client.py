@@ -48,9 +48,14 @@ def post_json(base_url: str, path: str, payload: dict, timeout: int = 10) -> dic
     try:
         with urlopen(req, timeout=timeout) as response:
             return json.load(response)
-    except (HTTPError, URLError) as exc:
-        # Do not include response bodies or credentials in device logs.
-        raise ConnectionError("Care-Inspector authentication request failed") from exc
+    except HTTPError as exc:
+        # Authorization, malformed requests and rate limits are not network outages.
+        # Retry server failures (5xx) only. Do not log response bodies or secrets.
+        if 500 <= exc.code <= 599:
+            raise ConnectionError("Care-Inspector server temporarily unavailable") from exc
+        raise PermissionError("Care-Inspector rejected device authentication request") from exc
+    except URLError as exc:
+        raise ConnectionError("Care-Inspector authentication network unavailable") from exc
 
 
 def authenticate_pi(hardware_id: str, post, key) -> dict:

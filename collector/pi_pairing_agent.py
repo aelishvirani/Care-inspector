@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.serialization import (
 import re
 
 # Keep this agent standalone: no FastAPI/backend dependencies on the Pi.
-DOMAIN = b"care-inspector-pi-pairing-v1\\x00"
+DOMAIN = b"care-inspector-pi-pairing-v1\x00"
 HARDWARE_ID_RE = re.compile(r"^[a-zA-Z0-9:_-]{8,128}$")
 
 
@@ -35,7 +35,7 @@ def signed_message(pairing_id: str, hardware_id: str, challenge_b64: str) -> byt
         raise ValueError("Invalid challenge encoding") from exc
     if len(challenge) != 32:
         raise ValueError("Invalid challenge size")
-    return DOMAIN + pairing_id.encode("ascii") + b"\\x00" + hardware_id.encode("ascii") + b"\\x00" + challenge
+    return DOMAIN + pairing_id.encode("ascii") + b"\x00" + hardware_id.encode("ascii") + b"\x00" + challenge
 
 # Standard service-account writable directory on the Pi, NOT a Git directory.
 DEFAULT_KEY_PATH = Path("/var/lib/care-inspector/pi-ed25519.key")

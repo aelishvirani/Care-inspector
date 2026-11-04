@@ -29,7 +29,7 @@ DOMAIN = b"care-inspector-pi-telemetry-v1\x00"
 
 
 class PiMeasurement(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
     device_id: str = Field(min_length=3, max_length=100)
     timestamp: datetime
     status: str = Field(min_length=1, max_length=80)

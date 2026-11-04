@@ -117,10 +117,12 @@ def ingest_signed_telemetry(request: SignedPiMeasurement):
             db.commit()
             raise HTTPException(409, "Measurement is not newer than existing data")
 
+        # Use server-verified discovery metadata, not client-supplied source.
+        source = f"{link.manufacturer.strip().lower()}_{link.protocol.strip().lower()}"
         data = measurement.model_dump(mode="python")
-        data.update(source="hitachi_modbus", online=True, timestamp=timestamp)
+        data.update(source=source, online=True, timestamp=timestamp)
         db.add(Measurement(**data))
-        device.source = "hitachi_modbus"
+        device.source = source
         device.online = True
         device.status = measurement.status
         device.last_seen = timestamp

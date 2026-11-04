@@ -73,7 +73,9 @@ async def monitor_one_printer(
     while not should_stop():
         driver = build_driver(target, printer_id=printer_id)
         try:
-            if not await driver.connect():
+            # Driver contract permits None on successful connection.
+            # An explicit False indicates connection failure.
+            if await driver.connect() is False:
                 raise ConnectionError("Printer unavailable")
             while not should_stop():
                 reading = await driver.read_measurement()

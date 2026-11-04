@@ -1590,6 +1590,9 @@ app.include_router(pi_cloud_auth_router)
 from .pi_signed_discovery import router as pi_signed_discovery_router
 app.include_router(pi_signed_discovery_router)
 
+from .pi_telemetry_api import router as pi_telemetry_router
+app.include_router(pi_telemetry_router)
+
 from .pi_target_config_api import router as pi_target_config_router
 app.include_router(pi_target_config_router)
 

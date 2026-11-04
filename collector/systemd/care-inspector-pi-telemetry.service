@@ -1,0 +1,25 @@
+[Unit]
+Description=Care-Inspector signed single-printer Raspberry Pi telemetry (experimental)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=careinspector
+Group=careinspector
+WorkingDirectory=/opt/care-inspector
+EnvironmentFile=/etc/care-inspector/pi-cloud.env
+ExecStart=/usr/bin/python3 -m collector.pi_telemetry_service
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/lib/care-inspector /etc/care-inspector
+
+[Install]
+WantedBy=multi-user.target
+
+# Opt-in only. Do NOT enable without actual Pi/Hitachi testing and MFG approval.
+# No printer commands or simulator WebSocket are run by this unit.

@@ -99,3 +99,31 @@ method cannot reliably detect an unknown, silent printer on a different IP
 subnet. Physical Pi/Hitachi validation and an approved addressing/onboarding
 strategy remain necessary; do not enable this experimental mode in production
 without MFG IT review. The normal local-file behavior remains unchanged.
+
+## Optional signed Pi telemetry worker (new; **not hardware-tested**)
+
+The separate `collector.pi_telemetry_service` uses the existing single-printer
+target selection, confirms the printer identity, constructs an allowlisted
+driver, and sends normalized readings over the signed HTTPS telemetry API.
+Only the Hitachi Modbus driver is currently approved; further brands need
+their own read-only driver and identity probe, **not** a new telemetry service.
+
+The worker is not enabled automatically. It does not run the simulator,
+legacy collector WebSocket, or printer start/stop commands.
+
+Before enabling it, MFG must validate the Pi's registered private key,
+printer identity/assignment in the backend, verified HTTPS, available
+Modbus network addressing, and the hardware with a read-only test.
+One Pi can report only its own already-discovered and customer-assigned printer.
+Unassigned devices are rejected by the backend and no controls are enabled.
+
+The optional unit `collector/systemd/care-inspector-pi-telemetry.service`
+uses the existing `/etc/care-inspector/pi-cloud.env`, with an optional
+`CARE_INSPECTOR_PI_TELEMETRY_SECONDS=5` interval. It accepts the same
+`CARE_INSPECTOR_PRINTER_CONFIG_SOURCE` sources as printer discovery.
+The service currently **does not** implement an offline persistent queue;
+it sends one fresh reading at a time, retrying connectivity and printer
+disconnections after a delay rather than resending stale samples.
+A cloud permission rejection stops the service for technician review.
+
+**Do not deploy or enable this unit on production hardware yet.**

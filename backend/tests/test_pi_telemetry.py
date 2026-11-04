@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from backend.app import pi_telemetry_api
 from backend.app.collectors import RegisteredCollector
 from backend.app.models import (
-    Alert, Customer, Device, DeviceConfiguration, Measurement, User,
+    Alert, Configuration, Customer, Device, DeviceConfiguration, Measurement, User,
 )
 from backend.app.pi_cloud_challenges import PiCloudChallenge
 from backend.app.pi_pairing import PiPairingAttempt
@@ -32,7 +32,7 @@ class PiTelemetryTests(unittest.TestCase):
             poolclass=StaticPool,
         )
         for model in (
-            User, Customer, Device, DeviceConfiguration, Measurement, Alert,
+            User, Customer, Device, DeviceConfiguration, Configuration, Measurement, Alert,
             PiPairingAttempt, PiRegisteredDevice, PiCloudChallenge,
             RegisteredCollector, PrinterDiscoveryLink,
         ):

@@ -127,3 +127,38 @@ disconnections after a delay rather than resending stale samples.
 A cloud permission rejection stops the service for technician review.
 
 **Do not deploy or enable this unit on production hardware yet.**
+
+## Raspberry Pi Python environment (deployment draft)
+
+The **cloud heartbeat**, **printer discovery** and **Pi telemetry** units now
+use `/opt/care-inspector/.venv/bin/python`, not system Python.
+Before enabling any units, on a **Raspberry Pi running Linux** with the project
+installed at `/opt/care-inspector` and an administrator-approved service
+account:
+
+```bash
+cd /opt/care-inspector
+python3 -m venv .venv
+.venv/bin/python -m pip install -r collector/requirements.txt
+.venv/bin/python -c 'import pymodbus, cryptography; print("Pi dependencies OK")'
+```
+
+Use the project release/permissions appropriate to the service account.
+Do not run these commands on the Mac for Raspberry Pi deployment. The path is
+a **proposed deployment layout**, not an observed Pi filesystem location.
+
+The **BLE GATT service intentionally continues to use** `/usr/bin/python3`
+because it depends on Linux distribution-installed `python3-dbus` and
+`python3-gi`/BlueZ bindings, which are not included in the minimal collector
+requirements. Verify that the system Python used by BLE also has its signing
+dependency `cryptography` available before deploying; do not change that unit
+to the virtual environment without checking D-Bus and PyGObject availability.
+
+No unit is installed, enabled, or started by these repository changes. Before
+deployment, confirm service account access to the private signing key,
+`/etc/care-inspector/pi-cloud.env`, the optional printer target file, and
+the specific installed Python environment. The telemetry unit includes a
+restart-rate limit, but successful network start does not guarantee that the
+cellular link or cloud endpoint is reachable.
+
+**Do not enable on production Pi hardware before IT-approved validation.**

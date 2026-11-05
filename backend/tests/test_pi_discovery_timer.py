@@ -19,7 +19,7 @@ class PiDiscoveryTimerTests(unittest.TestCase):
         text = (SYSTEMD / "care-inspector-printer-discovery.service").read_text()
         self.assertIn("Type=oneshot", text)
         self.assertIn("User=careinspector", text)
-        self.assertIn("ExecStart=/usr/bin/python3 -m collector.pi_printer_discovery", text)
+        self.assertIn("ExecStart=/opt/care-inspector/.venv/bin/python -m collector.pi_printer_discovery", text)
         self.assertIn("EnvironmentFile=/etc/care-inspector/pi-cloud.env", text)
         self.assertNotIn("collector.collector", text)
         self.assertNotIn("printer-control", text.lower().split("execstart=")[-1].split("\n")[0])

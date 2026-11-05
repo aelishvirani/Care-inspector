@@ -1,0 +1,5 @@
+# Raspberry Pi cloud heartbeat, signed discovery and read-only telemetry.
+# Install in /opt/care-inspector/.venv on Raspberry Pi OS.
+# Keep BlueZ GATT service on distro Python: dbus and gi are apt packages.
+pymodbus==3.15.0
+cryptography>=43,<48

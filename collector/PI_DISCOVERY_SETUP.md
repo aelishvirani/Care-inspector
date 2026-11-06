@@ -169,3 +169,29 @@ restart-rate limit, but successful network start does not guarantee that the
 cellular link or cloud endpoint is reachable.
 
 **Do not enable on production Pi hardware before IT-approved validation.**
+
+## Read-only installed-Pi permissions preflight (not yet hardware-tested)
+
+An optional deployment helper checks that the expected virtualenv executable,
+Pi key directory and files exist and have restrictive permissions. It **does
+not read the private key or environment file contents**, write to the system,
+connect to the cloud, discover printers, or enable any services.
+
+Only after an approved installation on a Linux Raspberry Pi, execute:
+
+```bash
+cd /opt/care-inspector
+.venv/bin/python -m collector.pi_deployment_preflight --installed
+```
+
+Expected key layout: `/var/lib/care-inspector` is owned by the service
+account with mode `0700`, and `pi-ed25519.key` is a regular file owned by
+that account with mode `0600`. The cloud env file must not be world-accessible
+or group-writable. Do not regenerate a missing key: restore/enroll through the
+approved workflow. This is a **partial static check**: the preflight does not
+prove that the service can access the key, the env syntax is valid, the Python
+modules load, Bluetooth works, TLS validates, or Modbus reaches the printer.
+MFG IT must separately verify all those items before enabling services.
+
+On the Mac, validate the preflight logic without touching the actual Pi:
+`python -m unittest backend.tests.test_pi_deployment_preflight -v`.

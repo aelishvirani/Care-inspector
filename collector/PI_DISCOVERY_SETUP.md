@@ -125,6 +125,13 @@ The service currently **does not** implement an offline persistent queue;
 it sends one fresh reading at a time, retrying connectivity and printer
 disconnections after a delay rather than resending stale samples.
 A cloud permission rejection stops the service for technician review.
+For permanent authorization, missing-file, or invalid-configuration failures,
+the telemetry worker exits with status `78` (`EX_CONFIG`), and the
+`care-inspector-pi-telemetry.service` unit uses
+`RestartPreventExitStatus=78` to avoid a repeated restart loop.
+Transient printer/network failures continue using internal retries.
+After resolving a permanent fault, an operator must explicitly restart the
+service; this policy is not a substitute for hardware and Linux validation.
 
 **Do not deploy or enable this unit on production hardware yet.**
 

@@ -20,6 +20,8 @@ from .printer_detection import PrinterTarget, detect_configured_printers
 from .hitachi_identity_probe import probe_hitachi_modbus
 
 LOG = logging.getLogger(__name__)
+# sysexits.h EX_CONFIG: tell systemd not to restart after a permanent fault.
+PERMANENT_FAILURE_EXIT_CODE = 78
 
 
 def get_single_target(backend_url: str, environ=None) -> PrinterTarget:
@@ -136,6 +138,16 @@ async def run_service(environ=None, *, get_target=get_single_target,
         return
 
 
+
+async def run_with_exit_status(stop: asyncio.Event) -> None:
+    """Translate permanent errors to an exit status recognized by systemd."""
+    try:
+        await run_service(stop=stop)
+    except (PermissionError, FileNotFoundError, ValueError) as exc:
+        LOG.error("Pi telemetry requires configuration or authorization review: %s", type(exc).__name__)
+        raise SystemExit(PERMANENT_FAILURE_EXIT_CODE) from exc
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
     loop = asyncio.new_event_loop()
@@ -147,7 +159,7 @@ def main():
         except NotImplementedError:
             pass
     try:
-        loop.run_until_complete(run_service(stop=stop))
+        loop.run_until_complete(run_with_exit_status(stop))
     finally:
         loop.close()
 

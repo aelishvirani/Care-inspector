@@ -171,9 +171,14 @@ class PiTelemetryServiceTests(unittest.TestCase):
                 return self.target
             async def monitor(url, target, printer_id, **kwargs):
                 monitor_calls.append((target, printer_id))
+            async def simulated_timeout(awaitable, timeout):
+                # wait_for normally takes ownership of this coroutine.
+                # The test must close it when simulating a timeout.
+                awaitable.close()
+                raise asyncio.TimeoutError
             with patch(
                 "collector.pi_telemetry_service.asyncio.wait_for",
-                new=AsyncMock(side_effect=asyncio.TimeoutError),
+                side_effect=simulated_timeout,
             ) as retry_wait:
                 await run_service(
                     environ={"CARE_INSPECTOR_BACKEND_URL": "https://example.invalid"},

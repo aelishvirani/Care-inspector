@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from collector.pi_telemetry_service import (
     get_single_target, identify_single_printer, monitor_one_printer, run_service,
+    run_with_exit_status, PERMANENT_FAILURE_EXIT_CODE,
 )
 from collector.pi_driver_registry import build_pi_driver
 from collector.printer_detection import PrinterTarget
@@ -227,6 +228,50 @@ class PiTelemetryServiceTests(unittest.TestCase):
                             ValueError("multiple printers")),
                     )
         asyncio.run(scenario())
+
+
+
+    def test_permanent_authentication_failure_exits_without_restart(self):
+        async def scenario():
+            with patch(
+                "collector.pi_telemetry_service.run_service",
+                new=AsyncMock(side_effect=PermissionError("denied")),
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    await run_with_exit_status(asyncio.Event())
+            self.assertEqual(raised.exception.code, PERMANENT_FAILURE_EXIT_CODE)
+        asyncio.run(scenario())
+
+    def test_permanent_invalid_configuration_exits_without_restart(self):
+        async def scenario():
+            with patch(
+                "collector.pi_telemetry_service.run_service",
+                new=AsyncMock(side_effect=ValueError("bad target")),
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    await run_with_exit_status(asyncio.Event())
+            self.assertEqual(raised.exception.code, 78)
+        asyncio.run(scenario())
+
+    def test_transient_failure_does_not_use_permanent_exit_code(self):
+        async def scenario():
+            with patch(
+                "collector.pi_telemetry_service.run_service",
+                new=AsyncMock(side_effect=ConnectionError("temporary outage")),
+            ):
+                with self.assertRaises(ConnectionError):
+                    await run_with_exit_status(asyncio.Event())
+        asyncio.run(scenario())
+
+    def test_systemd_prevents_restart_on_permanent_failure_only(self):
+        text = (
+            __import__("pathlib").Path(__file__).resolve().parents[2]
+            / "collector" / "systemd" / "care-inspector-pi-telemetry.service"
+        ).read_text()
+        self.assertIn("Restart=on-failure", text)
+        self.assertIn(
+            f"RestartPreventExitStatus={PERMANENT_FAILURE_EXIT_CODE}", text,
+        )
 
 
 

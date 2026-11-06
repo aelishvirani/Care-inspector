@@ -13,6 +13,7 @@ WorkingDirectory=/opt/care-inspector
 EnvironmentFile=/etc/care-inspector/pi-cloud.env
 ExecStart=/opt/care-inspector/.venv/bin/python -m collector.pi_telemetry_service
 Restart=on-failure
+RestartPreventExitStatus=78
 RestartSec=15
 NoNewPrivileges=true
 ProtectSystem=strict

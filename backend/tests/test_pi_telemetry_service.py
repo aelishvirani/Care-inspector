@@ -159,5 +159,71 @@ class PiTelemetryServiceTests(unittest.TestCase):
         asyncio.run(scenario())
 
 
+    def test_transient_startup_failure_recovers_without_restarting_process(self):
+        async def scenario():
+            attempts = 0
+            monitor_calls = []
+            def select_target(*args):
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise ConnectionError("printer not ready")
+                return self.target
+            async def monitor(url, target, printer_id, **kwargs):
+                monitor_calls.append((target, printer_id))
+            with patch(
+                "collector.pi_telemetry_service.asyncio.wait_for",
+                new=AsyncMock(side_effect=asyncio.TimeoutError),
+            ) as retry_wait:
+                await run_service(
+                    environ={"CARE_INSPECTOR_BACKEND_URL": "https://example.invalid"},
+                    get_target=select_target,
+                    identify=lambda target: self.printer_id,
+                    monitor=monitor,
+                )
+            self.assertEqual(attempts, 2)
+            self.assertEqual(monitor_calls, [(self.target, self.printer_id)])
+            retry_wait.assert_awaited_once()
+        asyncio.run(scenario())
+
+    def test_shutdown_during_startup_retry_does_not_start_monitoring(self):
+        async def scenario():
+            stop = asyncio.Event()
+            async def interrupt_wait(awaitable, timeout):
+                stop.set()
+                return await awaitable
+            monitor = AsyncMock()
+            with patch(
+                "collector.pi_telemetry_service.asyncio.wait_for",
+                side_effect=interrupt_wait,
+            ):
+                await run_service(
+                    environ={"CARE_INSPECTOR_BACKEND_URL": "https://example.invalid"},
+                    get_target=lambda *args: self.target,
+                    identify=lambda *args: (_ for _ in ()).throw(
+                        ConnectionError("printer offline")),
+                    monitor=monitor,
+                    stop=stop,
+                )
+            self.assertTrue(stop.is_set())
+            monitor.assert_not_awaited()
+        asyncio.run(scenario())
+
+    def test_invalid_startup_configuration_fails_without_retry(self):
+        async def scenario():
+            with patch(
+                "collector.pi_telemetry_service.asyncio.wait_for",
+                new=AsyncMock(side_effect=AssertionError("Must not retry")),
+            ):
+                with self.assertRaises(ValueError):
+                    await run_service(
+                        environ={"CARE_INSPECTOR_BACKEND_URL": "https://example.invalid"},
+                        get_target=lambda *args: (_ for _ in ()).throw(
+                            ValueError("multiple printers")),
+                    )
+        asyncio.run(scenario())
+
+
+
 if __name__ == "__main__":
     unittest.main()

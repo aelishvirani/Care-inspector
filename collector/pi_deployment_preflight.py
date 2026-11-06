@@ -6,7 +6,6 @@ This is a *preflight*, not proof of BlueZ/Modbus/cellular functionality.
 from __future__ import annotations
 
 import argparse
-import os
 import pwd
 import stat
 from pathlib import Path
@@ -51,7 +50,7 @@ def check_installation(root: Path = Path("/"), *, service_uid: int | None = None
             info = mounted(relative).lstat()
             if not stat.S_ISREG(info.st_mode):
                 failures.append(f"{label} must be a regular file, not a symlink")
-            elif info.st_mode & 0o007 or (expected_mode is not None
+            elif info.st_mode & 0o027 or (expected_mode is not None
                                             and stat.S_IMODE(info.st_mode) != expected_mode):
                 failures.append(f"{label} has unsafe permissions")
             elif label == "Pi signing key" and info.st_uid != service_uid:

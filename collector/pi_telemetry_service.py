@@ -109,14 +109,31 @@ async def run_service(environ=None, *, get_target=get_single_target,
     interval = int(env.get("CARE_INSPECTOR_PI_TELEMETRY_SECONDS", "5"))
     if not 1 <= interval <= 3600:
         raise ValueError("Telemetry interval must be 1–3600 seconds")
-    target = get_target(backend_url, env)
-    printer_id = await asyncio.to_thread(identify, target)
     if stop is None:
         stop = asyncio.Event()
-    await monitor(
-        backend_url, target, printer_id,
-        interval_seconds=interval, should_stop=stop.is_set,
-    )
+    # A printer may still be booting (or the cloud target source may be
+    # temporarily unreachable). Keep the process alive rather than exhausting
+    # systemd's restart limit. Never retry bad configuration or denied access.
+    while not stop.is_set():
+        try:
+            target = await asyncio.to_thread(get_target, backend_url, env)
+            printer_id = await asyncio.to_thread(identify, target)
+        except (PermissionError, FileNotFoundError, ValueError):
+            raise
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            LOG.warning("Pi telemetry startup interrupted: %s", type(exc).__name__)
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                pass
+            continue
+        if stop.is_set():
+            break
+        await monitor(
+            backend_url, target, printer_id,
+            interval_seconds=interval, should_stop=stop.is_set,
+        )
+        return
 
 
 def main():

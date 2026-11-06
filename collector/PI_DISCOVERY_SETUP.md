@@ -195,3 +195,19 @@ MFG IT must separately verify all those items before enabling services.
 
 On the Mac, validate the preflight logic without touching the actual Pi:
 `python -m unittest backend.tests.test_pi_deployment_preflight -v`.
+
+## Offline deployment simulation on Mac
+
+Run `python -m unittest backend.tests.test_pi_deployment_simulation -v`
+from the repository root in the existing development virtual environment.
+The test uses an automatically deleted temporary directory containing **fake**
+credentials and a dummy Python executable. It checks secure and insecure
+permission cases, missing files, service executable paths, service account
+names, telemetry restart policy, and separation of discovery, heartbeat and
+Bluetooth services. No fake signing key is used to authenticate or sign.
+
+This is a **static contract simulation**, not an emulated Raspberry Pi boot:
+macOS does not execute systemd, BlueZ or Raspberry Pi-only hardware drivers.
+When hardware becomes available, MFG IT must still validate systemd unit
+syntax, service-account accessibility, BLE, outbound HTTPS, printer networking,
+the real signing key and hardware-specific register mapping before enabling.

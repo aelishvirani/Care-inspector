@@ -12,7 +12,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HOST = "127.0.0.1"
 PORT = 8765
-MAX_SECONDS = 10.0
 SCAN_SECONDS = 6.0
 ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
 

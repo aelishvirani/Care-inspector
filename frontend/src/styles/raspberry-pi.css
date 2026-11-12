@@ -14,3 +14,8 @@
 .pi-target-spacer{flex:1}
 @media(max-width:1000px){.pi-target-row{grid-template-columns:repeat(2,minmax(0,1fr))}.pi-target-protocol{align-self:end}}
 @media(max-width:550px){.pi-target-row{grid-template-columns:minmax(0,1fr)}.pi-target-actions .pi-target-spacer{display:none}}
+
+/* Optional read-only BLE scan results from the technician's local Mac. */
+.pi-local-devices{margin-bottom:24px}
+.pi-local-footer{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid #e4eaee;font-size:12px;color:#687b87}
+.pi-local-footer .pi-info-btn{white-space:nowrap}

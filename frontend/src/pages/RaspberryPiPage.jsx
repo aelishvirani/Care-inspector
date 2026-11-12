@@ -6,6 +6,8 @@ import '../styles/raspberry-pi.css'
 
 export default function RaspberryPiPage() {
   const [devices, setDevices] = useState([])
+  const [localDevices, setLocalDevices] = useState([])
+  const [localScanError, setLocalScanError] = useState('')
   const [details, setDetails] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [inspectingId, setInspectingId] = useState(null)
@@ -13,6 +15,31 @@ export default function RaspberryPiPage() {
   const [connectingId, setConnectingId] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+
+  async function scanLocalBluetooth() {
+    setLocalScanError('')
+    setNotice('')
+    setScanning(true)
+    try {
+      const response = await fetch('/local-ble/scan', {
+        headers: { 'X-Care-Inspector-Local-Scan': '1' },
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error(
+        response.status === 503
+          ? 'Bluetooth scan unavailable. Check Bluetooth permissions on your Mac.'
+          : 'Local scanner is not running. Start the Mac scanner service.'
+      )
+      const result = await response.json()
+      if (!Array.isArray(result.devices)) throw new Error('Invalid scanner response')
+      setLocalDevices(result.devices)
+      setNotice(`Local BLE scan completed: ${result.devices.length} advertising devices found. Discovery does not pair or verify devices.`)
+    } catch (err) {
+      setLocalScanError(err.message || 'Cannot reach local Bluetooth scanner.')
+    } finally {
+      setScanning(false)
+    }
+  }
 
   async function discoverNearby() {
     setNotice('')
@@ -149,17 +176,18 @@ export default function RaspberryPiPage() {
           <p>Find nearby devices, inspect their identity, and connect them to Care-Inspector.</p>
         </div>
         <button type="button" className="management-primary-button pi-search-button"
-          disabled={scanning} onClick={discoverNearby}>
-          {scanning ? 'Searching...' : '⌁  Search Nearby'}
+          disabled={scanning} onClick={scanLocalBluetooth}>
+          {scanning ? 'Scanning...' : '⌁  Search Nearby'}
         </button>
       </div>
 
       {error && <div role="alert" className="pi-alert pi-alert-error">{error}</div>}
+      {localScanError && <div role="alert" className="pi-alert pi-alert-error">{localScanError}</div>}
       {notice && <div role="status" className="pi-alert pi-alert-info">{notice}</div>}
 
       <div className="pi-overview">
         <div className="pi-stat">
-          <span className="pi-stat-label">Selected nearby devices</span>
+          <span className="pi-stat-label">Selected for verification</span>
           <strong>{devices.length}</strong>
           <span className="pi-stat-subtitle">From Chrome Bluetooth selection</span>
         </div>
@@ -175,10 +203,45 @@ export default function RaspberryPiPage() {
         </div>
       </div>
 
+      <section className="pi-devices pi-local-devices" aria-labelledby="pi-local-devices-title">
+        <div className="pi-section-head">
+          <div>
+            <h2 id="pi-local-devices-title">Nearby Bluetooth Devices (Mac Scanner)</h2>
+            <p>Advertising BLE devices detected near this Mac. Not yet authenticated or paired with Care-Inspector.</p>
+          </div>
+          <span className="pi-count">{localDevices.length} detected</span>
+        </div>
+        {localDevices.length === 0 ? (
+          <div className="pi-empty">
+            <div className="pi-empty-symbol" aria-hidden="true">⌁</div>
+            <h3>Ready for local Bluetooth discovery</h3>
+            <p>Start the optional Mac Bluetooth scanner, then press <strong>Search Nearby</strong>. Devices appear here without Chrome's picker.</p>
+            <p className="pi-muted">Only advertising Bluetooth Low Energy devices can be detected. This is not secure Raspberry Pi enrollment.</p>
+          </div>
+        ) : (
+          <div className="pi-device-list">
+            {localDevices.map(item => (
+              <div className="pi-device-row" key={item.id}>
+                <div className="pi-device-icon" aria-hidden="true">⌁</div>
+                <div className="pi-device-copy">
+                  <strong>{item.name}</strong>
+                  <span>Local BLE identifier: {item.id} · Signal: {item.rssi == null ? 'Unknown' : `${item.rssi} dBm`}</span>
+                </div>
+                <span className="pi-status">Detected · Unverified</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="pi-local-footer">
+          To verify or register a Care-Inspector Raspberry Pi, select it through the browser's secure pairing flow.
+          <button className="pi-info-btn" type="button" onClick={discoverNearby}>Select Pi for Verification</button>
+        </div>
+      </section>
+
       <section className="pi-devices" aria-labelledby="pi-devices-title">
         <div className="pi-section-head">
           <div>
-            <h2 id="pi-devices-title">Nearby Devices</h2>
+            <h2 id="pi-devices-title">Devices Selected for Verification</h2>
             <p>Devices selected in Chrome remain temporary until secure pairing is complete.</p>
           </div>
           <span className="pi-count">{devices.length} selected</span>
@@ -188,7 +251,7 @@ export default function RaspberryPiPage() {
           <div className="pi-empty">
             <div className="pi-empty-symbol" aria-hidden="true">⌁</div>
             <h3>Ready to find nearby devices</h3>
-            <p>Turn on Bluetooth, then select <strong>Search Nearby</strong>. Chrome will open its required device picker.</p>
+            <p>Use <strong>Select Pi for Verification</strong> above for Chrome's secure device selection.</p>
             <p className="pi-muted">Your Raspberry Pi will need the Care-Inspector BLE service for automatic identity verification.</p>
           </div>
         ) : (

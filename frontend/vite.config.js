@@ -12,7 +12,7 @@ export default defineConfig({
       '/local-ble': {
         target: 'http://127.0.0.1:8765',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\\/local-ble/, ''),
+        rewrite: path => path.slice('/local-ble'.length),
       },
       '/api': {
         target: 'http://127.0.0.1:8000',
